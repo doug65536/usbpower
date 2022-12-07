@@ -29,7 +29,7 @@ QEMU_OUTNAME = $(OUTNAMEBASE)-$(QEMU_MCU)
 all: $(OUTNAME).hex
 
 clean:
-	rm -f $(OUTNAME).hex $(OUTNAME).elf $(OBJECTS_ALL)
+	rm -f $(OUTNAME).hex $(QEMU_OUTNAME).elf $(OUTNAME).elf $(OBJECTS_ALL)
 
 .PHONY: all clean flash hex fuses disassemble qemu-debug debug
 
@@ -38,6 +38,7 @@ COMPILEFLAGS = -mmcu=$(MCU) -g # -flto
 CXXFLAGS = $(COMPILEFLAGS) \
 	-W -Wall -Wextra -Werror=return-type \
 	-Werror -Wno-error=unused-function -Wno-error=unused-variable \
+	-Wno-error=unused-parameter \
 	-std=c++17 -DF_CPU=$(MCU_FREQ)
 CXXFLAGS += -Os -flto
 #CXXFLAGS += -O0
@@ -68,6 +69,10 @@ qemu-debug: $(QEMU_OUTNAME).elf
 	$(QEMU) -machine $(QEMU_MACHINE) -bios $^ -s -S
 
 debug: $(QEMU_OUTNAME).elf
-	$(GDB) $^ -iex 'target extended-remote :1234'
+	$(GDB) $^ -iex 'target extended-remote :1234' \
+		-ex 'b __vector_21' \
+		-ex 'b __vector_13' \
+		-ex 'b __vector_11' \
+		-ex 'b __vector_16'
 
 -include $(DEPFILES)
