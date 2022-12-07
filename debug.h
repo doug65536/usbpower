@@ -5,7 +5,8 @@
 void debug_leds_init();
 void debug_leds_toggle();
 void debug_leds_toggle_led(uint8_t led_index);
-void debug_leds_toggle_led_divisor(uint8_t led_index, uint16_t divisor);
+void debug_leds_toggle_led_divisor(uint8_t led_index, 
+  uint32_t increment, uint32_t wrap);
 
 #define noreturn __attribute__((__noreturn__))
 noreturn void debug_assert_failed(

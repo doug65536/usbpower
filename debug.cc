@@ -33,11 +33,12 @@ void debug_leds_toggle_led(uint8_t led_index)
   LED_PORT ^= 1U << (LED_BIT + led_index);
 }
 
-static uint16_t divisor_counters[2];
+static uint32_t divisor_counters[2];
 
-void debug_leds_toggle_led_divisor(uint8_t led_index, uint16_t divisor)
+void debug_leds_toggle_led_divisor(uint8_t led_index, 
+  uint32_t increment, uint32_t divisor)
 {
-  if (++divisor_counters[led_index] >= divisor) {
+  if ((divisor_counters[led_index] += increment) >= divisor) {
     divisor_counters[led_index] -= divisor;
     debug_leds_toggle_led(led_index);
   }
