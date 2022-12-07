@@ -217,7 +217,7 @@ static uint16_t set_mA;
 
 // Calibration
 static uint16_t cal_null_iofs;
-static char calibration_stk[64];
+static char calibrate_stk[96];
 
 static void set_vsetpwm(uint16_t level)
 {
@@ -262,8 +262,15 @@ static void set_postregpwm(uint16_t level)
 static constexpr uint8_t curve_size = 8;
 uint8_t curve_vset[curve_size];
 
+// Task function
 static void *calibrate(void *)
 {
+#if 1
+	while (true) {
+		debug_leds_toggle_led(0);
+		timer_wait_for_ms(500);
+	}
+#else
 	// First, set voltage and current PWM to zero
 	set_iofspwm(0);
 	set_vsetpwm(0);
@@ -322,6 +329,7 @@ static void *calibrate(void *)
 	}
 
 	return nullptr;
+#endif
 }
 
 int main()
@@ -333,8 +341,8 @@ int main()
 	configure_usbpower_adc();
 	adc_start_conversion();
 
-	// uint8_t calibration_task = task_create(calibration_stk, 
-	// 	sizeof(calibration_stk), calibrate);
+	uint8_t calibration_task = task_create(calibrate_stk, 
+		sizeof(calibrate_stk), calibrate);
 
 	task_run_forever();
 }
