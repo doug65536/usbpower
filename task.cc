@@ -94,18 +94,23 @@ uint8_t task_create(void *stack, size_t stack_sz,
   // sets up the parameter registers and jumps to the task function
   avrctx_bootstrap *bootstrap = reinterpret_cast<avrctx_bootstrap *>(
     ((uintptr_t)stack + stack_sz - sizeof(avrctx_bootstrap)) & -sizeof(int));
+  
   uintptr_t addr = reinterpret_cast<uintptr_t>(task_self_destruct);
   bootstrap->task_self_destruct_hi = addr >> 8;
   bootstrap->task_self_destruct_lo = addr;
+  
   addr = reinterpret_cast<uintptr_t>(task_start_trampoline);
   bootstrap->ctx.pc_hi = addr >> 8;
   bootstrap->ctx.pc_lo = addr;
   bootstrap->ctx.sreg = 0;  // interrupts disabled!
+
   addr = (uintptr_t)entry;
-  bootstrap->ctx.r3 = (uint8_t)((uintptr_t)addr >> 8);
-  bootstrap->ctx.r2 = (uint8_t)((uintptr_t)addr);
-  bootstrap->ctx.r5 = (uint8_t)((uintptr_t)arg >> 8);
-  bootstrap->ctx.r4 = (uint8_t)(uintptr_t)arg;
+  bootstrap->ctx.r3 = (uint8_t)(addr >> 8);
+  bootstrap->ctx.r2 = (uint8_t)(addr);
+
+  addr = (uintptr_t)arg;
+  bootstrap->ctx.r5 = (uint8_t)(addr >> 8);
+  bootstrap->ctx.r4 = (uint8_t)addr;
 
   // Find a free task slot
   uint8_t task_id;
