@@ -25,8 +25,10 @@ static constexpr const uint32_t day_of_ms = 1000L * 86400;
 static void timer_tick()
 {
   millisec += 16;
+  // 48
   fractsec += 384 / 8;
 
+  // 125
   if (fractsec >= 1000 / 8) {
     fractsec -= 1000 / 8;
     ++millisec;
@@ -65,11 +67,11 @@ static bool timers_full()
 
 void timer_init()
 {
-  OCR0B = 0xFF;
-  TIMSK0 = (1U << TOIE0);
-  TIFR0 = (1U << TOV0);
-  // div 1024
-  TCCR0B = (1U << CS00) | (1U << CS02);
+  OCR1A = 0xFF;
+  TIMSK1 = (1U << OCIE1A);
+  TIFR1 = (1U << TOV1);
+  // div 1024, clear on timer compare match
+  TCCR1B = (1U << CS10) | (1U << CS12) | (1U << WGM12);
 }
 
 void timer_wait_for_ms(uint32_t wait_millisec)
@@ -79,15 +81,18 @@ void timer_wait_for_ms(uint32_t wait_millisec)
 
 void timer_wait_until(uint32_t wakeup_millisec)
 {
-  insist(wakeup_millisec < millisec + day_of_ms);
+  assert(wakeup_millisec < millisec + day_of_ms);
 
   // Resume immediately if overdue already
   if (wakeup_millisec <= millisec)
     return;
   
   // Wait for a timer to become available
-  while (timers_full())
+  while (timers_full()) {
     task_yield();
+    if (wakeup_millisec <= millisec)
+      return;
+  }
   
   for (uint8_t i = 0; i < max_timers; ++i) {
     if (!(timer_is_used(i))) {
@@ -137,9 +142,9 @@ static void timer_notify()
   //debug_leds_toggle_led(0);
 }
 
-ISR(TIMER0_OVF_vect)
+ISR(TIMER1_COMPA_vect)
 {
-  debug_leds_toggle_led_divisor(0, 61);
+  //debug_leds_toggle_led_divisor(0, 16384L/8, 1000000L/8);
   timer_tick();
   timer_notify();
 }
