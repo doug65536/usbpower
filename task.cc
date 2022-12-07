@@ -123,7 +123,7 @@ uint8_t task_create(void *stack, size_t stack_sz,
   task *tp = tasks + task_id;
   tp->sp = &bootstrap->ctx;
   tp->state = initial_state;
-  tp->stk_limit = (void*)((char*)stack + stack_sz);
+  tp->stk_limit = stack;
 
   return task_id;
 }
