@@ -152,7 +152,6 @@ uint8_t task_current()
 void task_run_forever()
 {
 	sei();
-	sleep_enable();
 
 	while(1) {
 		task_yield();
