@@ -37,11 +37,11 @@ void task_self_destruct(void *return_value)
 
 avrctx *task_cswitch(uint16_t forced_task, avrctx *outgoing_ctx)
 {
-  task *incoming_task;
+  task *incoming_task = nullptr;
   task *outgoing_task = tasks + task_index;
 
   if (task_index) {
-    insist((void*)outgoing_ctx >= outgoing_task->stk_limit);
+    assert((void*)outgoing_ctx >= outgoing_task->stk_limit);
   }
 
   if (outgoing_task->state == task_state_running)
@@ -64,11 +64,12 @@ avrctx *task_cswitch(uint16_t forced_task, avrctx *outgoing_ctx)
     }
   } else {
     i = forced_task;
+    incoming_task = tasks + i;
   }
 
   task_index = i;
 
-  if (skipped >= max_tasks) {
+  if (!incoming_task) {
     incoming_task = tasks;
     task_index = 0;
   }
