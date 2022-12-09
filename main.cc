@@ -5,6 +5,7 @@
 #include "clk.h"
 #include "task.h"
 #include "timer.h"
+#include "usb.h"
 #include "debug.h"
 
 // ## Digital inputs
@@ -158,18 +159,6 @@ static void select_adc_channel(uint8_t channel)
 #endif
 }
 
-static void configure_usbpower_adc()
-{	
-#ifdef __AVR_ATmega32U4__
-	// Disable digital input buffer on ADC inputs
-	DIDR0 = (1U<<ADC0D) | (1U<<ADC1D) | (1U<<ADC4D);
-	DIDR2 = (1U<<ADC10D);
-
-	// Configure ADC
-	select_adc_channel(0);
-#endif
-}
-
 static uint8_t const adc_channels[4] PROGMEM = { 0, 1, 4, 10 };
 static uint16_t adc_values[4];
 static uint8_t adc_input;
@@ -186,6 +175,19 @@ static void adc_start_conversion()
 
 	// Enable ADC, start conversion, enable ADC interrupt
 	ADCSRA = (1U<<ADEN) | (1U<<ADSC) | (1U<<ADIE);
+}
+
+static void configure_usbpower_adc()
+{	
+#ifdef __AVR_ATmega32U4__
+	// Disable digital input buffer on ADC inputs
+	DIDR0 = (1U<<ADC0D) | (1U<<ADC1D) | (1U<<ADC4D);
+	DIDR2 = (1U<<ADC10D);
+#endif
+
+	// Configure ADC
+	select_adc_channel(0);
+	adc_start_conversion();
 }
 
 static uint8_t select_next_adc_input(uint8_t from)
@@ -217,7 +219,7 @@ static uint16_t set_mA;
 
 // Calibration
 static uint16_t cal_null_iofs;
-static char calibrate_stk[96];
+static char calibrate_stk[128];
 
 static void set_vsetpwm(uint16_t level)
 {
@@ -260,7 +262,7 @@ static void set_postregpwm(uint16_t level)
 }
 
 static constexpr uint8_t curve_size = 8;
-uint8_t curve_vset[curve_size];
+static uint8_t curve_vset[curve_size];
 
 // Task function
 static void *calibrate(void *)
@@ -268,7 +270,9 @@ static void *calibrate(void *)
 #if 1
 	while (true) {
 		debug_leds_toggle_led(0);
-		timer_wait_for_ms(500);
+		timer_wait_for_ms(250);
+		debug_leds_toggle_led(0);
+		timer_wait_for_ms(750);
 	}
 #else
 	// First, set voltage and current PWM to zero
@@ -334,12 +338,13 @@ static void *calibrate(void *)
 
 int main()
 {
+	// Max throttle, immediately
 	clk_divisor(0);
 	debug_leds_init();
+	usb_init();
 	task_init();
 	timer_init();
 	configure_usbpower_adc();
-	adc_start_conversion();
 
 	uint8_t calibration_task = task_create(calibrate_stk, 
 		sizeof(calibrate_stk), calibrate);

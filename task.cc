@@ -60,7 +60,7 @@ avrctx *task_cswitch(uint16_t forced_task, avrctx *outgoing_ctx)
   uint8_t skipped = 0;
   
   // If caller doesn't specify a forced task
-  if (!i) {
+  if (!i && tasks_ready) {
     // Find next ready task, skipping idle task 0
     for (i = task_index + 1; skipped < max_tasks; ++i, ++skipped) {
       // Wraparound and skip over task 0
@@ -75,12 +75,13 @@ avrctx *task_cswitch(uint16_t forced_task, avrctx *outgoing_ctx)
     }
   }
 
-  if (skipped >= max_tasks)
+  if (skipped >= max_tasks || !tasks_ready)
     i = 0;
   
   task_index = i;
   task *incoming_task = tasks + i;
 
+  assert(incoming_task->state == task_state_ready);
   incoming_task->state = task_state_running;
   --tasks_ready;
 
@@ -146,8 +147,10 @@ uint8_t task_create(void *stack, size_t stack_sz,
 
 void task_resume(uint8_t task_id)
 {
-  tasks[task_id].state = task_state_ready;
-  ++tasks_ready;
+  if (tasks[task_id].state != task_state_ready) {
+    tasks[task_id].state = task_state_ready;
+    ++tasks_ready;
+  }
 }
 
 void task_suspend_self()
