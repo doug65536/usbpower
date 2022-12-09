@@ -157,7 +157,7 @@ void task_resume(uint8_t task_id)
 
 void task_suspend_self()
 {
-  tasks[task_index].state = task_state_suspended;  
+  tasks[task_index].state = task_state_suspended;
   task_yield();
 }
 
