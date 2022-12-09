@@ -32,6 +32,8 @@ __zero_reg__ = 1
 .global task_yield_noreturn
 task_yield:
 task_yield_noreturn:
+  in r0,__SREG__
+  cli
   push r29
   push r28
   push r17
@@ -50,7 +52,6 @@ task_yield_noreturn:
   push r4
   push r3
   push r2
-  in r0,__SREG__
   push r0
   in r22,__SP_L__
   in r23,__SP_H__
