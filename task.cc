@@ -149,7 +149,8 @@ uint8_t task_create(void *stack, size_t stack_sz,
 
 void task_resume(uint8_t task_id)
 {
-  if (tasks[task_id].state != task_state_ready) {
+  assert(tasks[task_id].state == task_state_suspended);
+  if (tasks[task_id].state == task_state_suspended) {
     tasks[task_id].state = task_state_ready;
     ++tasks_ready;
   }
