@@ -105,7 +105,9 @@ uint8_t task_create(void *stack, size_t stack_sz,
   avrctx_bootstrap *bootstrap = reinterpret_cast<avrctx_bootstrap *>(
     ((uintptr_t)stack + stack_sz - sizeof(avrctx_bootstrap)) & -sizeof(int));
   
-  uintptr_t addr = reinterpret_cast<uintptr_t>(task_self_destruct);
+  uintptr_t addr;
+
+  addr = reinterpret_cast<uintptr_t>(task_self_destruct);
   bootstrap->task_self_destruct_hi = addr >> 8;
   bootstrap->task_self_destruct_lo = addr;
   
