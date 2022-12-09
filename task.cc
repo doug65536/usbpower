@@ -169,8 +169,10 @@ void task_run_forever()
 	sei();
 
 	while(1) {
-		task_yield();
+    // Keep waiting for interrupts until a task is ready
     if (!tasks_ready)
 		  sleep_mode();
+    else
+		  task_yield();
 	}
 }
