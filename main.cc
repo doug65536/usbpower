@@ -163,15 +163,9 @@ static uint8_t const adc_channels[4] PROGMEM = { 0, 1, 4, 10 };
 static uint16_t adc_values[4];
 static uint8_t adc_input;
 
-// Incremented every ADC IRQ
-static uint16_t conversion_count;
-
 static void adc_start_conversion()
 {
-	++conversion_count;
-
-	if ((conversion_count & 16383) == 16383)
-		debug_leds_toggle_led(1);
+	debug_leds_toggle_led_divisor(1, 1, 32768);
 
 	// Enable ADC, start conversion, enable ADC interrupt
 	ADCSRA = (1U<<ADEN) | (1U<<ADSC) | (1U<<ADIE);
