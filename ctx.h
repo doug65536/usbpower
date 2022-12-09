@@ -36,3 +36,5 @@ struct avrctx_bootstrap {
   uint8_t task_self_destruct_hi;
   uint8_t task_self_destruct_lo;
 };
+
+static_assert(sizeof(avrctx_bootstrap) == 24, "unexpected boostrap size");
