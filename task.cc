@@ -20,6 +20,7 @@ static constexpr size_t max_tasks = 4;
 
 static task tasks[max_tasks];
 static uint8_t task_index;
+static uint8_t tasks_ready;
 
 void task_init()
 {
@@ -37,44 +38,51 @@ void task_self_destruct(void *return_value)
 
 avrctx *task_cswitch(uint16_t forced_task, avrctx *outgoing_ctx)
 {
-  task *incoming_task = nullptr;
+  // Look up running task
   task *outgoing_task = tasks + task_index;
 
+  // Verify no stack overflow if not main task
   if (task_index) {
     assert((void*)outgoing_ctx >= outgoing_task->stk_limit);
   }
 
-  if (outgoing_task->state == task_state_running)
-    outgoing_task->state = task_state_suspended;
-
+  // Save the stack pointer for resume later
   outgoing_task->sp = outgoing_ctx;
 
-  uint8_t i;
+  // If still running, make it ready
+  if (outgoing_task->state == task_state_running) {
+    outgoing_task->state = task_state_ready;
+    ++tasks_ready;
+  }
+
+  // Assume the forced task
+  uint8_t i = forced_task;
   uint8_t skipped = 0;
-  if (!forced_task) {
+  
+  // If caller doesn't specify a forced task
+  if (!i) {
+    // Find next ready task, skipping idle task 0
     for (i = task_index + 1; skipped < max_tasks; ++i, ++skipped) {
       // Wraparound and skip over task 0
       if (i >= max_tasks) {
+        // Restart at 1 (by the time the for loop increment happens)
         i = 0;
         continue;
       }
-      incoming_task = tasks + i;
-      if (incoming_task->state == task_state_ready)
+
+      if (tasks[i].state == task_state_ready)
         break;
     }
-  } else {
-    i = forced_task;
-    incoming_task = tasks + i;
   }
 
+  if (skipped >= max_tasks)
+    i = 0;
+  
   task_index = i;
-
-  if (!incoming_task) {
-    incoming_task = tasks;
-    task_index = 0;
-  }
+  task *incoming_task = tasks + i;
 
   incoming_task->state = task_state_running;
+  --tasks_ready;
 
   return incoming_task->sp;
 }
@@ -131,17 +139,20 @@ uint8_t task_create(void *stack, size_t stack_sz,
   tp->state = initial_state;
   tp->stk_limit = stack;
 
+  tasks_ready += (tp->state == task_state_ready);
+
   return task_id;
 }
 
 void task_resume(uint8_t task_id)
 {
   tasks[task_id].state = task_state_ready;
+  ++tasks_ready;
 }
 
 void task_suspend_self()
 {
-  tasks[task_index].state = task_state_suspended;
+  tasks[task_index].state = task_state_suspended;  
   task_yield();
 }
 
@@ -156,6 +167,7 @@ void task_run_forever()
 
 	while(1) {
 		task_yield();
-		sleep_mode();
+    if (!tasks_ready)
+		  sleep_mode();
 	}
 }
