@@ -10,9 +10,9 @@
 // gcd(384, 1000) = 8
 // 1000 / 8 = 125
 //  384 / 8 = 48
+static uint8_t days;
 static uint8_t fractsec;
 static uint32_t millisec;
-static uint8_t days;
 
 // millisec can only withstand increasing for 49.7 days
 // To handle this, every day, all timeouts are moved
