@@ -137,90 +137,126 @@ static uint8_t const usb_config_descriptor[25] PROGMEM = {
 
 static void usb_select_ep(uint8_t ep)
 {
+#ifdef __AVR_ATmega32U4__
   UENUM = ep;
+#endif
 }
 
 static void usb_endpoint_enable_irq_rx_setup()
 {
+#ifdef __AVR_ATmega32U4__
   UEIENX = (1U << RXSTPE);
+#endif
 }
 static void usb_endpoint_enable()
 {
+#ifdef __AVR_ATmega32U4__
   UECONX = (1U << EPEN);
+#endif
 }
 
 static void usb_endpoint_dir(uint8_t dir)
 {
+#ifdef __AVR_ATmega32U4__
   UECFG0X = dir;
+#endif
 }
 
 static void usb_endpoint_alloc(uint8_t size)
 {
+#ifdef __AVR_ATmega32U4__
   UECFG1X |= size | 2;
+#endif
 }
 
 static bool usb_endpoint_config_ok()
 {
+#ifdef __AVR_ATmega32U4__
   return UESTA0X & (1U << CFGOK);
+#else
+  return false;
+#endif
 }
 
 static void usb_endpoint_reset()
 {
+#ifdef __AVR_ATmega32U4__
   UERST = 1;
   UERST = 0;
+#endif
 }
 
 static void usb_disable()
 {
+#ifdef __AVR_ATmega32U4__
   USBCON &= ~(1U << OTGPADE) & ~(1U << USBE);
+#endif
 }
 
 static void usb_enable()
 {
+#ifdef __AVR_ATmega32U4__
   USBCON |= (1U << USBE) | (1U << OTGPADE);
+#endif
 }
 
 static void usb_reset()
 {
+#ifdef __AVR_ATmega32U4__
   usb_disable();
   usb_enable();
+#endif
 }
 
 unused
 static void usb_freeze_clk()
 {
+#ifdef __AVR_ATmega32U4__
   USBCON |= (1U << FRZCLK);
+#endif
 }
 
 static void usb_unfreeze_clk()
 {
+#ifdef __AVR_ATmega32U4__
   USBCON &= ~(1U << FRZCLK);
+#endif
 }
 
 static void usb_mode_fullspeed()
 {
+#ifdef __AVR_ATmega32U4__
   UDCON = 0;
+#endif
 }
 
 static void usb_attach()
 {
+#ifdef __AVR_ATmega32U4__
   UDCON &= ~(1U << DETACH);
+#endif
 }
 
 unused
 static void usb_detach()
 {
+#ifdef __AVR_ATmega32U4__
   UDCON |= (1U << DETACH);
+#endif
 }
 
 static void usb_enable_irq_end_of_reset()
 {
+#ifdef __AVR_ATmega32U4__
   UDIEN |= (1U << EORSTE);
+#endif
 }
 
 static void usb_enable_irq_start_of_frame()
 {
+#ifdef __AVR_ATmega32U4__
   UDIEN |= (1U << SOFE);
+#endif
 }
 
 void usb_init()
@@ -240,66 +276,86 @@ void usb_init()
 
 static void usb_handle_end_of_reset()
 {
+#ifdef __AVR_ATmega32U4__
   usb_select_ep(0);
   usb_endpoint_enable();
   usb_endpoint_dir(0);
   usb_endpoint_alloc(32);
   assert(usb_endpoint_config_ok());
   usb_endpoint_reset();
+#endif
 }
 
 static bool usb_ep_bank_writeable()
 {
+#ifdef __AVR_ATmega32U4__
   return UEINTX & (1U << RWAL);
+#else
+  return false;
+#endif
 }
 
 unused 
 static void usb_send_progmem(void const * PROGMEM p, size_t sz)
 {
+#ifdef __AVR_ATmega32U4__
   while (sz--) {
     UEDATX = *(char const *)pgm_read_byte(p);
     p = (char const *)p + 1;
   }
+#endif
 }
 
 unused 
 static void usb_send_u8(uint8_t value)
 {
+#ifdef __AVR_ATmega32U4__
   UEDATX = value;
+#endif
 }
 
 unused 
 static void usb_send_u16(uint16_t value)
 {
+#ifdef __AVR_ATmega32U4__
   UEDATX = (uint8_t)value;
   UEDATX = (uint8_t)(value >> 8);
+#endif
 }
 
 unused 
 static void usb_send_u24(uint32_t value)
 {
+#ifdef __AVR_ATmega32U4__
   UEDATX = (uint8_t)value;
   UEDATX = (uint8_t)(value >> 8);
   UEDATX = (uint8_t)(value >> 16);
+#endif
 }
 
 unused 
 static void usb_send_u32(uint32_t value)
 {
+#ifdef __AVR_ATmega32U4__
   UEDATX = (uint8_t)value;
   UEDATX = (uint8_t)(value >> 8);
   UEDATX = (uint8_t)(value >> 16);
   UEDATX = (uint8_t)(value >> 24);
+#endif
 }
 
 static void usb_endpoint_irq_mask_set(uint8_t mask)
 {
+#ifdef __AVR_ATmega32U4__
   UEINTX |= mask;
+#endif
 }
 
 static void usb_endpoint_irq_mask_clr(uint8_t mask)
 {
+#ifdef __AVR_ATmega32U4__
   UEINTX &= ~mask;
+#endif
 }
 
 static void usb_handle_start_of_frame()
@@ -319,8 +375,10 @@ static void usb_handle_start_of_frame()
   usb_send_u16(0);
   // Digital output current state (PREREGEN#, TESTLOAD, LED)
   usb_send_u16(0);
+#ifdef __AVR_ATmega32U4__
   usb_endpoint_irq_mask_set((1U << STALLEDI) | (1U << RXOUTI) |
     (1<< RXSTPI) | (1U << NAKOUTI) | (1U << STALLEDI));
+#endif
 }
 
 static void usb_handle_rx_out()
@@ -328,9 +386,9 @@ static void usb_handle_rx_out()
 
 }
 
+#ifdef __AVR_ATmega32U4__
 ISR(USB_GEN_vect)
 {
-  hang();
   uint8_t udint = UDINT;
 
   if (udint & (1U << EORSTI))
@@ -340,31 +398,46 @@ ISR(USB_GEN_vect)
   if (udint & (1U << SOFI))
     usb_handle_start_of_frame();
 }
+#endif
 
 static uint8_t usb_recv_u8()
 {
+#ifdef __AVR_ATmega32U4__
   uint8_t value = UEDATX;
   return value;
+#else
+  return 0;
+#endif
 }
 
 static uint16_t usb_recv_u16()
 {
+#ifdef __AVR_ATmega32U4__
   uint16_t value = UEDATX;
   value |= (uint16_t)UEDATX << 8;
   return value;
+#else
+  return 0;
+#endif
 }
 
 static uint32_t usb_recv_u24()
 {
+#ifdef __AVR_ATmega32U4__
   uint32_t value = UEDATX;
   value |= (uint32_t)UEDATX << 8;
   value |= (uint32_t)UEDATX << 16;
   return value;
+#else
+  return 0;
+#endif
 }
 
 static void usb_endpoint_wait_bank()
 {
+#ifdef __AVR_ATmega32U4__
   while (!(UEINTX & TXINI));
+#endif
 }
 
 #define USB_REQ_SET_FEATURE 0x03
@@ -380,8 +453,9 @@ static void usb_handle_rx_setup_packet()
   uint16_t wValue = usb_recv_u16();
   uint16_t wIndex = usb_recv_u16();
   uint16_t wLength = usb_recv_u16();
+#ifdef __AVR_ATmega32U4__
   usb_endpoint_irq_mask_clr((1U << RXSTPI) | (1U << RXOUTI) | (1U << TXINI));
-
+#endif
   if (bRequest == USB_REQ_GET_DESCRIPTOR) {
     uint8_t const *descriptor = nullptr;
     size_t descriptor_sz = 0;
@@ -394,13 +468,27 @@ static void usb_handle_rx_setup_packet()
     }
     usb_endpoint_wait_bank();
     usb_send_progmem(descriptor, descriptor_sz);
+#ifdef __AVR_ATmega32U4__
     usb_endpoint_irq_mask_clr((1U << TXINI));
+#endif
   }
 }
 
+static bool usb_irq_is_setup()
+{
+#ifdef __AVR_ATmega32U4__
+  return UEINTX & (1U << RXSTPI);
+#else
+  return false;
+#endif
+}
+
+#ifdef __AVR_ATmega32U4__
 ISR(USB_COM_vect)
 {
+  // Doesn't hang though - this isn't reached
   hang();
-  if (UEINTX & (1U << RXSTPI))
+  if (usb_irq_is_setup())
     usb_handle_rx_setup_packet();
 }
+#endif
