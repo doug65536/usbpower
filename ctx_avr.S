@@ -65,10 +65,13 @@ task_yield_noreturn:
   push r0
   in r22,__SP_L__
   in r23,__SP_H__
-  ldi r30,hi8(task_cswitch)
-  ldi r31,lo8(task_cswitch)
+#if 1
+  ldi r30,pm_lo8(task_cswitch)
+  ldi r31,pm_hi8(task_cswitch)
   icall
-  ;rcall task_cswitch
+#else
+  rcall task_cswitch
+#endif
   out __SP_L__,r24
   out __SP_H__,r25
   pop r0

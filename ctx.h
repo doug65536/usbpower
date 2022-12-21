@@ -3,12 +3,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#if __PTRDIFF_WIDTH__ >= 4
-#define USE_PTR32 1
-#else
-#define USE_PTR32 1
-#endif
-
 struct ctx {
 };
 
@@ -18,8 +12,10 @@ enum struct init_tag : uint8_t {
 	entry_31_0,
 #endif
 
+#if USE_PTR16
 	// 16 bit
 	entry_15_0,
+#endif
 
 	// hi8
 	entry_15_8,
@@ -32,8 +28,10 @@ enum struct init_tag : uint8_t {
 	arg_31_0,
 #endif
 
+#if USE_PTR16
 	// 16 bit
 	arg_15_0,
+#endif
 
 	// hi8
 	arg_15_8,
@@ -46,8 +44,10 @@ enum struct init_tag : uint8_t {
 	exit_31_0,
 #endif
 
+#if USE_PTR16
 	// exit16
 	exit_15_0,
+#endif
 
 	// hi8
 	exit_15_8,
@@ -60,8 +60,10 @@ enum struct init_tag : uint8_t {
 	tramp_31_0,
 #endif
 
+#if USE_PTR16
 	// trampoline16
 	tramp_15_0,
+#endif
 
 	// hi8
 	tramp_15_8,

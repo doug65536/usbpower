@@ -27,4 +27,4 @@ struct font_info {
   uint16_t const * offsets;
 };
 
-#define FONTDATA __attribute__((__section__(".fontdata")))
+#define FONTDATA __attribute__((__section__(".progmem.data.fontdata")))

@@ -104,15 +104,19 @@ uint8_t task_create(void *stack, size_t stack_sz,
   // Set up the callee saved registers to contain the start function
   // and argument, point it at task_start_trampoline. The trampoline
   // sets up the parameter registers and jumps to the task function
-  ctx_init_fixup const *fixup_ptr = task_init_fixups_arch;
-  for (ctx_init_fixup fixup = arch_fetch_fixup(fixup_ptr); 
-      fixup.tag != init_tag::end; ++fixup_ptr) {
+  
+  ctx_init_fixup fixup;
+  for (ctx_init_fixup const *fixup_ptr = task_init_fixups_arch;
+      (fixup = arch_fetch_fixup(fixup_ptr)), 
+      (fixup.tag != init_tag::end); ++fixup_ptr) {
     char *dest = bootstrap + fixup.value;
     union {
 #if USE_PTR32
       uint32_t n32;
 #endif
+#if USE_PTR16
       uint16_t n16;
+#endif
       uint8_t n8;
     };
     switch (fixup.tag) {
@@ -123,11 +127,13 @@ store32:
       memcpy(dest, &n32, sizeof(n32));
       break;
 #endif
+#if USE_PTR16
     case init_tag::entry_15_0:
       n16 = (uintptr_t)(void*)entry;
 store16:
       memcpy(dest, &n16, sizeof(n16));
       break;
+#endif
     case init_tag::entry_15_8:
       n8 = (uintptr_t)(void*)entry >> 8;
 store8:
@@ -141,9 +147,11 @@ store8:
       n32 = (uintptr_t)(void*)task_start_trampoline;
       goto store32;
 #endif
+#if USE_PTR16
     case init_tag::tramp_15_0:
       n16 = (uintptr_t)(void*)task_start_trampoline;
       goto store16;
+#endif
     case init_tag::tramp_15_8:
       n8 = (uintptr_t)(void*)task_start_trampoline >> 8;
       goto store8;
@@ -155,9 +163,11 @@ store8:
       n32 = (uintptr_t)arg;
       goto store32;
 #endif
+#if USE_PTR16
     case init_tag::arg_15_0:
       n16 = (uintptr_t)arg;
       goto store16;
+#endif
     case init_tag::arg_15_8:
       n8 = (uintptr_t)arg >> 8;
       goto store8;
@@ -170,9 +180,11 @@ store8:
       n32 = (uintptr_t)(void*)task_self_destruct;
       goto store32;
 #endif
+#if USE_PTR16
     case init_tag::exit_15_0:
       n16 = (uintptr_t)(void*)task_self_destruct;
       goto store16;
+#endif
     case init_tag::exit_15_8:
       n8 = (uintptr_t)(void*)task_self_destruct >> 8;
       goto store8;

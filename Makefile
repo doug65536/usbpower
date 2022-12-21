@@ -62,7 +62,7 @@ AVRC_COMPILEFLAGS = -mmcu=$(AVR_MCU) -g # -flto
 AVRC_CXXFLAGS = $(AVRC_COMPILEFLAGS) $(LANGUAGEFLAGS)
 AVRC_CXXFLAGS +=  -DF_CPU=$(AVR_MCU_FREQ)
 AVRC_CXXFLAGS += -Os -flto
-#CXXFLAGS += -O0
+#AVRC_CXXFLAGS += -O0
 
 BUILD_CXXFLAGS = $(BUILD_COMPILEFLAGS) $(BUILD_LANGUAGEFLAGS)
 BUILD_CXXFLAGS += -g -Os
@@ -127,22 +127,22 @@ $(OUTNAME).hex: $(OUTNAME).elf
 hex: $(OUTNAME).hex
 
 flash: $(OUTNAME).hex
-	$(AVRDUDE) -c flip1 -p $(MCU) -U flash:w:$(OUTNAME).hex:i
+	$(AVRDUDE) -c flip1 -p $(AVR_MCU) -U flash:w:$(OUTNAME).hex:i
 
 fuses:
-	$(AVRDUDE) -c flip1 -p $(MCU) -U lfuse:w:0x40:m -u
+	$(AVRDUDE) -c flip1 -p $(AVR_MCU) -U lfuse:w:0x40:m -u
 
 disassemble: $(OUTNAME).elf
-	$(OBJDUMP) -S $^
+	$(AVRC_OBJDUMP) -S $^
 
 qemu-disassemble: $(QEMU_OUTNAME).elf
-	$(OBJDUMP) -S $^
+	$(AVRC_OBJDUMP) -S $^
 
 qemu-debug: $(QEMU_OUTNAME).elf
 	$(QEMU) -machine $(QEMU_MACHINE) -bios $^ -s -S
 
 debug: $(QEMU_OUTNAME).elf
-	$(GDB) $^ -iex 'target extended-remote :1234' \
+	$(AVRC_GDB) $^ -iex 'target extended-remote :1234' \
 		$(GDBFLAGS) \
 		-ex 'b __vector_21' \
 		-ex 'b __vector_13' \
