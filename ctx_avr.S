@@ -27,12 +27,22 @@ __zero_reg__ = 1
 	; uint8_t r29;
   ; void (*pc)();
 
-; void task_yield()
+.Lnothing_is_ready:
+  ; Return false
+  ldi r24,0
+  ret
+
+; bool task_yield()
 .global task_yield
 .global task_yield_noreturn
 task_yield:
 task_yield_noreturn:
   in r0,__SREG__
+  ; Return immediately if no tasks are ready
+  lds r18,tasks_ready
+  tst r18
+  breq .Lnothing_is_ready
+  ; S
   cli
   push r29
   push r28
@@ -55,7 +65,10 @@ task_yield_noreturn:
   push r0
   in r22,__SP_L__
   in r23,__SP_H__
-  rcall task_cswitch
+  ldi r30,hi8(task_cswitch)
+  ldi r31,lo8(task_cswitch)
+  icall
+  ;rcall task_cswitch
   out __SP_L__,r24
   out __SP_H__,r25
   pop r0
@@ -79,6 +92,8 @@ task_yield_noreturn:
   pop r29
   eor r1,r1
   out __SREG__,r0
+  ; Return true
+  ldi r24,1
   ; Skip ret if the interrupt flag is set
   sbrs r0,7
   ret

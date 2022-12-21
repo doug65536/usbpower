@@ -1,10 +1,5 @@
 #include <avr/io.h>
-
-#define SPI_D      DDRB
-#define SPI_P      PORTB
-#define SPI_B_CSX  3
-#define SPI_B_SCL  2
-#define SPI_B_SDA  1
+#include "display-ST7735R-bitbang.h"
 
 ; data direction must be configured before calling
 ; void disp_tx_ST7735R(uint8_t value (r24), bool dcx (r22), uint8_t base (r20))
@@ -51,6 +46,7 @@ disp_tx_ST7735R:
   ret
   ; 84 + 4 = 88
 
+#if 0
 ; data direction must be configured before calling
 ; uint64_t disp_rx_ST7735R(uint8_t base) 
 ; 93 cycles per byte, 5.81us/byte, 172000 bytes/s
@@ -79,31 +75,4 @@ disp_rx_ST7735R:
   ; 112 cycles
 
   ; 132x162
-
-
-  ; +----------------|---------+
-  ; |                |         |
-  ; |                |    Vset |
-  ; |                | 12.000V |
-  ; |              V |         |
-  ; |                |      CV |
-  ; +----------------+---------+
-  ; |                |         |
-  ; |                |    Iset |
-  ; |                |    45mA |
-  ; |              A |         |
-  ; |                |      CC |
-  ; +----------------+---------+
-  ; |                |         |
-  ; |                |    Wset |
-  ; |                |     15W |
-  ; |              W |         |
-  ; |                |      CW |
-  ; +---------+------+---------+
-  ; | history | 54mW |         |
-  ; +---------+------+---------+
-  ; |         | 4mWh |         |
-  ; +---------+------+---------+
-  ; +---------+------+---------+
-  ; | config  | monitor | 
-  ; +---------+------+---------+
+#endif

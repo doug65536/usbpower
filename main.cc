@@ -6,6 +6,7 @@
 #include "task.h"
 #include "timer.h"
 #include "usb.h"
+#include "render.h"
 #include "debug.h"
 
 // ## Digital inputs
@@ -339,6 +340,7 @@ int main()
 	task_init();
 	timer_init();
 	configure_usbpower_adc();
+	render_init();
 
 	uint8_t calibration_task = task_create(calibrate_stk, 
 		sizeof(calibrate_stk), calibrate);

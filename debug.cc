@@ -49,3 +49,12 @@ void debug_assert_failed(char const *file unused,
 {
   abort();
 }
+
+extern "C" noreturn
+void hang()
+{
+  while (1) {
+    LED_PORT ^= 0b11;
+    for (uint32_t volatile i = 0; i < 200000; ++i);
+  }
+}

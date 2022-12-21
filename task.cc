@@ -1,17 +1,17 @@
-#include <avr/interrupt.h>
-#include <avr/sleep.h>
+#include <string.h>
 
 #include "ctx.h"
 #include "task.h"
 #include "debug.h"
 
 extern "C" void *task_start_trampoline();
-extern "C" void task_yield(uint16_t forced_task);
-extern "C" __attribute__((__noreturn__)) 
-void task_yield_noreturn(uint16_t forced_task);
+extern "C" bool task_yield(uint16_t forced_task);
+extern "C"
+noreturn
+bool task_yield_noreturn(uint16_t forced_task);
 
 struct task {
-  avrctx *sp = nullptr;
+  ctx *sp = nullptr;
   void *stk_limit = nullptr;
   task_state state = task_state_free;
 };
@@ -20,7 +20,7 @@ static constexpr size_t max_tasks = 4;
 
 static task tasks[max_tasks];
 static uint8_t task_index;
-static uint8_t tasks_ready;
+uint8_t tasks_ready;
 
 void task_init()
 {
@@ -31,12 +31,12 @@ void task_init()
 void task_self_destruct(void *return_value)
 {
   task *self = tasks + task_index;
-  self->sp = (avrctx*)return_value;
+  self->sp = (ctx*)return_value;
   self->state = task_state_exited;
   task_yield_noreturn();
 }
 
-avrctx *task_cswitch(uint16_t forced_task, avrctx *outgoing_ctx)
+ctx *task_cswitch(uint16_t forced_task, ctx *outgoing_ctx)
 {
   // Look up running task
   task *outgoing_task = tasks + task_index;
@@ -95,34 +95,94 @@ uint8_t task_create(void *stack, size_t stack_sz,
   void *(*entry)(void *arg), void *arg, 
   task_state initial_state)
 {
-  // Fill in the context save area to resume into the new task.
+  char *bootstrap = (char*)(((uintptr_t)stack + stack_sz - 
+    task_init_sz) & -task_init_align);
+
   // Wire it up so it will return to task_self_destruct, save
   // the return value of the start function, and terminate the task,
   // if the task function returns.
   // Set up the callee saved registers to contain the start function
   // and argument, point it at task_start_trampoline. The trampoline
   // sets up the parameter registers and jumps to the task function
-  avrctx_bootstrap *bootstrap = reinterpret_cast<avrctx_bootstrap *>(
-    ((uintptr_t)stack + stack_sz - sizeof(avrctx_bootstrap)) & -sizeof(int));
-  
-  uintptr_t addr;
+  ctx_init_fixup const *fixup_ptr = task_init_fixups_arch;
+  for (ctx_init_fixup fixup = arch_fetch_fixup(fixup_ptr); 
+      fixup.tag != init_tag::end; ++fixup_ptr) {
+    char *dest = bootstrap + fixup.value;
+    union {
+#if USE_PTR32
+      uint32_t n32;
+#endif
+      uint16_t n16;
+      uint8_t n8;
+    };
+    switch (fixup.tag) {
+#if USE_PTR32
+    case init_tag::entry_31_0:
+      n32 = (uintptr_t)(void*)entry;
+store32:
+      memcpy(dest, &n32, sizeof(n32));
+      break;
+#endif
+    case init_tag::entry_15_0:
+      n16 = (uintptr_t)(void*)entry;
+store16:
+      memcpy(dest, &n16, sizeof(n16));
+      break;
+    case init_tag::entry_15_8:
+      n8 = (uintptr_t)(void*)entry >> 8;
+store8:
+      memcpy(dest, &n8, sizeof(n8));
+      break;
+    case init_tag::entry_7_0:
+      n8 = (uintptr_t)(void*)entry;
+      goto store8;
+#if USE_PTR32
+    case init_tag::tramp_31_0:
+      n32 = (uintptr_t)(void*)task_start_trampoline;
+      goto store32;
+#endif
+    case init_tag::tramp_15_0:
+      n16 = (uintptr_t)(void*)task_start_trampoline;
+      goto store16;
+    case init_tag::tramp_15_8:
+      n8 = (uintptr_t)(void*)task_start_trampoline >> 8;
+      goto store8;
+    case init_tag::tramp_7_0:
+      n8 = (uintptr_t)(void*)task_start_trampoline;
+      goto store8;
+#if USE_PTR32
+    case init_tag::arg_31_0:
+      n32 = (uintptr_t)arg;
+      goto store32;
+#endif
+    case init_tag::arg_15_0:
+      n16 = (uintptr_t)arg;
+      goto store16;
+    case init_tag::arg_15_8:
+      n8 = (uintptr_t)arg >> 8;
+      goto store8;
+    case init_tag::arg_7_0:
+      n8 = (uintptr_t)arg;
+      goto store8;
 
-  addr = reinterpret_cast<uintptr_t>(task_self_destruct);
-  bootstrap->task_self_destruct_hi = addr >> 8;
-  bootstrap->task_self_destruct_lo = addr;
-  
-  addr = reinterpret_cast<uintptr_t>(task_start_trampoline);
-  bootstrap->ctx.pc_hi = addr >> 8;
-  bootstrap->ctx.pc_lo = addr;
-  bootstrap->ctx.sreg = 0;  // interrupts disabled!
-
-  addr = (uintptr_t)entry;
-  bootstrap->ctx.r3 = (uint8_t)(addr >> 8);
-  bootstrap->ctx.r2 = (uint8_t)(addr);
-
-  addr = (uintptr_t)arg;
-  bootstrap->ctx.r5 = (uint8_t)(addr >> 8);
-  bootstrap->ctx.r4 = (uint8_t)addr;
+#if USE_PTR32
+    case init_tag::exit_31_0:
+      n32 = (uintptr_t)(void*)task_self_destruct;
+      goto store32;
+#endif
+    case init_tag::exit_15_0:
+      n16 = (uintptr_t)(void*)task_self_destruct;
+      goto store16;
+    case init_tag::exit_15_8:
+      n8 = (uintptr_t)(void*)task_self_destruct >> 8;
+      goto store8;
+    case init_tag::exit_7_0:
+      n8 = (uintptr_t)(void*)task_self_destruct;
+      goto store8;
+    case init_tag::end:
+      __builtin_unreachable();
+    }
+  }
 
   // Find a free task slot
   uint8_t task_id;
@@ -138,7 +198,7 @@ uint8_t task_create(void *stack, size_t stack_sz,
 
   // Fill in task
   task *tp = tasks + task_id;
-  tp->sp = &bootstrap->ctx;
+  tp->sp = (ctx*)bootstrap;
   tp->state = initial_state;
   tp->stk_limit = stack;
 
@@ -169,14 +229,11 @@ uint8_t task_current()
 
 void task_run_forever()
 {
-	sei();
+  arch_irq_enable();
 
 	while(1) {
     // Keep waiting for interrupts until a task is ready
-    if (tasks_ready) {
-		  task_yield();
-    } else {
-      sleep_mode();
-    }
+    if (!task_yield())
+      arch_sleep();
 	}
 }

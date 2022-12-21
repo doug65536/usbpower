@@ -31,7 +31,8 @@ void read_png_file(char const* file_name)
   FILE *fp = fopen(file_name, "rb");
   if (!fp)
     abort_("[read_png_file] File %s could not be opened for reading", file_name);
-  fread(header, 1, 8, fp);
+  if (fread(header, 1, 8, fp) < 0)
+    abort_("[read_png_file] fread failed");
   // if (png_sig_cmp(header, 0, 8))
   //   abort_("[read_png_file] File %s is not recognized as a PNG file", file_name);
 
@@ -79,12 +80,23 @@ void read_png_file(char const* file_name)
 
 int main(int argc, char const **argv)
 {
-  if (argc <= 2)
+  if (argc <= 1) {
+    std::cerr << "Missing source file argument";
     return 1;
-  setlocale(LC_ALL, "en_CA.UTF-8");
-  char const *short_name = argv[2];
-  std::ifstream sfl(argv[1]);//"liberation_sans_narrow_bold_48.sfl");
-  std::vector<char> buf(1 << 14);
+  }
+  setlocale(LC_ALL, "en_US.UTF-8");
+  std::string indent(4, ' ');
+  char const *pathname = argv[1];
+  char const *dir_end = strrchr(pathname, '\\');
+  char const *dir_end2 = strrchr(pathname, '/');
+  dir_end = std::max(dir_end, dir_end2);
+  size_t dir_len = dir_end ? (dir_end + 1) - pathname : 0;
+  std::string file_dir(pathname, pathname + dir_len);
+  std::string short_name = pathname + dir_len;
+  short_name.resize(short_name.length() - 4);
+  std::cerr << "Opening " << argv[1] << '\n';
+  std::ifstream sfl(argv[1]);
+  // std::vector<char> buf(1 << 14);
   // fontname \n
   // fontsize lineheight \n
   // texturefile \n
@@ -98,8 +110,10 @@ int main(int argc, char const **argv)
   sfl >> font_size >> line_height;
   std::string texture_name;
   std::getline(sfl, texture_name, '\n');
-  std::cout << "Discarded \"" << texture_name << "\"\n";
+  if (!texture_name.empty())
+    std::cout << "// Discarded \"" << texture_name << "\"\n";
   std::getline(sfl, texture_name, '\n');
+  texture_name = file_dir + texture_name;
   size_t symbol_count;
   sfl >> symbol_count;
   struct font_char_info {
@@ -112,7 +126,6 @@ int main(int argc, char const **argv)
     font_char_info &item = infos.back();
     sfl >> item.id >> item.x >> item.y >> item.width >> item.height >> 
       item.xoffset >> item.yoffset >> item.xadvance;
-    std::cout << "Symbol " << (char32_t)item.id << ' ' << (int)item.id << '\n';
   }
   size_t kern_count;
   sfl >> kern_count;
@@ -127,7 +140,8 @@ int main(int argc, char const **argv)
     sfl >> item.first >> item.second >> item.adjustment;
     std::getline(sfl, dummy, '\n');
   }
-  std::cout << font_name << ' ' << 
+  std::cout << "// " <<
+    font_name << ' ' << 
     font_size << ' ' << 
     line_height << ' ' << 
     texture_name << ' ' << 
@@ -141,28 +155,28 @@ int main(int argc, char const **argv)
   std::cout << "#include <avr/pgmspace.h>\n";
   std::cout << "#include \"fontdata.h\"\n";
   std::cout << "static font_symbol const " << 
-    short_name << "_font_symbols[] PROGMEM = {\n";
+    short_name << "_font_symbols[] FONTDATA = {\n";
   for (int i = 0; i < symbol_count; ++i) {    
-    std::cout << (i ? "," : "") << "{ " <<
-      infos[i].id << ',' <<
-      //infos[i].x << ',' <<
-      //infos[i].y << ',' <<
-      infos[i].width << ',' <<
-      infos[i].height << ',' <<
-      infos[i].xoffset << ',' <<
-      infos[i].yoffset << ',' <<
-      infos[i].xadvance << "}\n";
-    total_output += 16;
+    std::cout << indent << "{ " <<
+      infos[i].id << ", " <<
+      //infos[i].x << ", " <<
+      //infos[i].y << ", " <<
+      infos[i].width << ", " <<
+      infos[i].height << ", " <<
+      infos[i].xoffset << ", " <<
+      infos[i].yoffset << ", " <<
+      infos[i].xadvance << " },\n";
+    total_output += 12;
   }
   std::cout << "};\n";
   std::cout << "\n";
   std::cout << "static font_kern const " << 
-    short_name << "_font_kerns[] PROGMEM = {\n";
+    short_name << "_font_kerns[] FONTDATA = {\n";
   for (int i = 0; i < kern_count; ++i) {    
-    std::cout << (i ? "," : "") << '{' <<
-      kerns[i].first << ',' <<
-      kerns[i].second << ',' <<
-      kerns[i].adjustment << "}\n";
+    std::cout << indent << "{ " <<
+      kerns[i].first << ", " <<
+      kerns[i].second << ", " <<
+      kerns[i].adjustment << " },\n";
     total_output += 6;
   }
   std::cout << "};\n";
@@ -191,7 +205,8 @@ int main(int argc, char const **argv)
   //   std::cout << '\n';
   // }
 
-  std::cout << "static uint8_t " << short_name << "_runs[] PROGMEM = {\n";
+  std::cout << "static uint8_t const " << 
+    short_name << "_font_runs[] FONTDATA = {\n";
   std::vector<size_t> runs;
   std::vector<size_t> offsets;
   std::vector<size_t> lengths;
@@ -206,27 +221,38 @@ int main(int argc, char const **argv)
     cpptr = codepoints;
     std::wcsrtombs(mbstr.data(), &cpptr, mbstr.size(), &state);
 
-    std::cout << "// Glyph " << 
-      (int)infos[i].id << ' ' << mbstr.data() << '\n';
+    std::cout << indent << "// Glyph " << 
+      (int)infos[i].id << ' ' << mbstr.data() << 
+      " width=" << infos[i].width <<
+      " height=" << infos[i].height <<
+      " xadvance=" << infos[i].xadvance <<
+      " xofs=" << infos[i].xoffset <<
+      " yofs=" << infos[i].yoffset <<
+      '\n';
 
     bool in_pixel = false;
     int run = 0;
+    std::cout << indent;
+
     for (int y = infos[i].y, ye = infos[i].y + infos[i].height, 
         xs = infos[i].x, xe = infos[i].x + infos[i].width; y < ye; ++y) {
+      bool any_run = false;
       for (int x = xs; x < xe; ++x, ++run) {
         bool b = row_pointers[y][x*4+3];
         if (in_pixel != b) {
-          std::cout << run << ',';
+          std::cout << run << ", ";
           runs.push_back(run);
+          any_run = true;
           run = 0;          
           in_pixel = b;
           ++total_output;
         }
       }
-      std::cout << '\n';
+      if (any_run)
+        std::cout << '\n' << indent;
     }
     if (run) {
-      std::cout << run << ',';
+      std::cout << indent << run << ", ";
       runs.push_back(run);
       ++total_output;
       run = 0;
@@ -237,7 +263,29 @@ int main(int argc, char const **argv)
   }
   std::cout << "};\n";
 
-  std::cout << "// total bytes: " << total_output << '\n';
+  std::cout << "static uint16_t const " << 
+    short_name << "_font_offsets[] FONTDATA = {\n";
+  for (size_t i = 0, ofs = 0; i < lengths.size(); ++i) {
+    std::cout << "    " << ofs << ",// length=" << lengths[i] << "\n";
+    ofs += lengths[i];
+    total_output += 2;
+  }
+  std::cout << "};\n";
+
+  std::cout << "font_info " << 
+    short_name << "_font_info = {\n";
+  std::cout << "    " << font_size << ",// font_size\n";
+  std::cout << "    " << infos.size() << ",// glyph_count\n";
+  std::cout << "    " << short_name <<"_font_symbols,\n";
+  std::cout << "    " << short_name <<"_font_runs,\n";
+  std::cout << "    " << kerns.size() << ",// kern_count\n";
+  std::cout << "    " << short_name <<"_font_kerns,\n";
+  std::cout << "    " << short_name <<"_font_offsets,\n";
+  std::cout << "};\n";
+
+  std::cout << "// approximate bytes: " << total_output << '\n';
+  std::cerr << "Approximate font size: " << total_output << " bytes\n";
+  std::cout << "// approximate due to unknown pointer size in code generator\n";
 
   // for (size_t i = 0; i < lengths.size(); ++i) {
   //   size_t length = lengths[i];

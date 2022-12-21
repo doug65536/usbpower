@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdlib.h>
-#include "ctx.h"
+#include "ctx_avr.h"
 
 enum task_state : uint8_t {
   task_state_free,
@@ -29,7 +29,9 @@ __attribute__((__noreturn__))
 void task_run_forever();
 
 // Assembly
-extern "C" avrctx *task_cswitch(uint16_t forced_task, avrctx *outgoing_ctx);
-extern "C" void task_yield(uint16_t forced_task = 0);
+extern "C" ctx *task_cswitch(uint16_t forced_task, ctx *outgoing_ctx);
+extern "C" bool task_yield(uint16_t forced_task = 0);
 extern "C" __attribute__((__noreturn__)) 
-void task_yield_noreturn(uint16_t forced_task = 0);
+bool task_yield_noreturn(uint16_t forced_task = 0);
+
+extern uint8_t tasks_ready;

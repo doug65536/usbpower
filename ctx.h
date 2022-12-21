@@ -1,40 +1,80 @@
 #pragma once
+
 #include <stdint.h>
+#include <stddef.h>
 
-// context
-// R0, R1,         R18–R27,          R30, R31 are clobbered
-//         R2-R17,          R28, R29 are callee saved
-struct avrctx {
-  uint8_t unused; // weird postincrement push artifact
-	uint8_t sreg;
-	uint8_t r2;
-	uint8_t r3;
-	uint8_t r4;
-	uint8_t r5;
-	uint8_t r6;
-	uint8_t r7;
-	uint8_t r8;
-	uint8_t r9;
-	uint8_t r10;
-	uint8_t r11;
-	uint8_t r12;
-	uint8_t r13;
-	uint8_t r14;
-	uint8_t r15;
-	uint8_t r16;
-	uint8_t r17;
-	uint8_t r28;
-	uint8_t r29;
-  uint8_t pc_hi;
-  uint8_t pc_lo;
+#if __PTRDIFF_WIDTH__ >= 4
+#define USE_PTR32 1
+#else
+#define USE_PTR32 1
+#endif
+
+struct ctx {
 };
 
-static_assert(sizeof(avrctx) == 22, "unexpected context size");
+enum struct init_tag : uint8_t {
+#if USE_PTR32
+	// 32 bit
+	entry_31_0,
+#endif
 
-struct avrctx_bootstrap {
-  avrctx ctx;
-  uint8_t task_self_destruct_hi;
-  uint8_t task_self_destruct_lo;
+	// 16 bit
+	entry_15_0,
+
+	// hi8
+	entry_15_8,
+
+	// lo8
+	entry_7_0,
+	
+#if USE_PTR32
+	// 32 bit
+	arg_31_0,
+#endif
+
+	// 16 bit
+	arg_15_0,
+
+	// hi8
+	arg_15_8,
+
+	// lo8
+	arg_7_0,
+
+#if USE_PTR32
+	// exit32
+	exit_31_0,
+#endif
+
+	// exit16
+	exit_15_0,
+
+	// hi8
+	exit_15_8,
+
+	// lo8
+	exit_7_0,
+
+#if USE_PTR32
+	// trampoline32
+	tramp_31_0,
+#endif
+
+	// trampoline16
+	tramp_15_0,
+
+	// hi8
+	tramp_15_8,
+
+	// lo8
+	tramp_7_0,
+
+	end
 };
 
-static_assert(sizeof(avrctx_bootstrap) == 24, "unexpected boostrap size");
+struct ctx_init_fixup {
+	init_tag tag;
+	uint8_t value;
+};
+
+extern ctx_init_fixup const task_init_fixups_arch[];
