@@ -13,6 +13,7 @@
 //  uint32_t apsr;
 //  uint32_t pc;
 // size_t task_yield(size_t force_task)
+.balign 4
 .global task_yield
 .global task_yield_noreturn
 task_yield:
@@ -37,6 +38,8 @@ task_yield_noreturn:
   // Call scheduler, passing stack pointer in 2nd parameter (1st parameter
   // comes from the task_yield caller)
   mov r1,sp
+  // Stack must be 64 bit aligned at call
+  sub sp,#4
   bl task_cswitch
   mov sp,r0
 

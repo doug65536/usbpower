@@ -5,10 +5,10 @@
 #include "debug.h"
 
 extern "C" void *task_start_trampoline();
-extern "C" bool task_yield(uint16_t forced_task);
+extern "C" bool task_yield(task_t forced_task);
 extern "C"
-noreturn
-bool task_yield_noreturn(uint16_t forced_task);
+noreturn_decl
+bool task_yield_noreturn(task_t forced_task);
 
 struct task {
   ctx *sp = nullptr;
@@ -18,8 +18,8 @@ struct task {
 
 static constexpr size_t max_tasks = 4;
 
-static task tasks[max_tasks];
-static uint8_t task_index;
+task tasks[max_tasks];
+uint8_t task_index;
 uint8_t tasks_ready;
 
 void task_init()
@@ -27,8 +27,7 @@ void task_init()
   tasks[0].state = task_state_running;
 }
 
- __attribute__((__noreturn__))
-void task_self_destruct(void *return_value)
+noreturn_decl void task_self_destruct(void *return_value)
 {
   task *self = tasks + task_index;
   self->sp = (ctx*)return_value;
@@ -36,7 +35,7 @@ void task_self_destruct(void *return_value)
   task_yield_noreturn();
 }
 
-ctx *task_cswitch(uint16_t forced_task, ctx *outgoing_ctx)
+ctx *task_cswitch(task_t forced_task, ctx *outgoing_ctx)
 {
   // Look up running task
   task *outgoing_task = tasks + task_index;
@@ -91,12 +90,11 @@ ctx *task_cswitch(uint16_t forced_task, ctx *outgoing_ctx)
 // Create a task with the specified stack, function, and argument
 // Returns new task id
 // Return 0 if out of resources
-uint8_t task_create(void *stack, size_t stack_sz, 
+task_t task_create(void *stack, size_t stack_sz, 
   void *(*entry)(void *arg), void *arg, 
   task_state initial_state)
 {
-  char *bootstrap = (char*)(((uintptr_t)stack + stack_sz - 
-    task_init_sz) & -task_init_align);
+  char *bootstrap = arch_init_stack(stack, stack_sz);
 
   // Wire it up so it will return to task_self_destruct, save
   // the return value of the start function, and terminate the task,
@@ -117,7 +115,9 @@ uint8_t task_create(void *stack, size_t stack_sz,
 #if USE_PTR16
       uint16_t n16;
 #endif
+#if USE_PTR8
       uint8_t n8;
+#endif
     };
     switch (fixup.tag) {
 #if USE_PTR32
@@ -134,6 +134,7 @@ store16:
       memcpy(dest, &n16, sizeof(n16));
       break;
 #endif
+#if USE_PTR8
     case init_tag::entry_15_8:
       n8 = (uintptr_t)(void*)entry >> 8;
 store8:
@@ -142,6 +143,7 @@ store8:
     case init_tag::entry_7_0:
       n8 = (uintptr_t)(void*)entry;
       goto store8;
+#endif
 #if USE_PTR32
     case init_tag::tramp_31_0:
       n32 = (uintptr_t)(void*)task_start_trampoline;
@@ -152,12 +154,14 @@ store8:
       n16 = (uintptr_t)(void*)task_start_trampoline;
       goto store16;
 #endif
+#if USE_PTR8
     case init_tag::tramp_15_8:
       n8 = (uintptr_t)(void*)task_start_trampoline >> 8;
       goto store8;
     case init_tag::tramp_7_0:
       n8 = (uintptr_t)(void*)task_start_trampoline;
       goto store8;
+#endif
 #if USE_PTR32
     case init_tag::arg_31_0:
       n32 = (uintptr_t)arg;
@@ -168,13 +172,14 @@ store8:
       n16 = (uintptr_t)arg;
       goto store16;
 #endif
+#if USE_PTR8
     case init_tag::arg_15_8:
       n8 = (uintptr_t)arg >> 8;
       goto store8;
     case init_tag::arg_7_0:
       n8 = (uintptr_t)arg;
       goto store8;
-
+#endif
 #if USE_PTR32
     case init_tag::exit_31_0:
       n32 = (uintptr_t)(void*)task_self_destruct;
@@ -185,12 +190,14 @@ store8:
       n16 = (uintptr_t)(void*)task_self_destruct;
       goto store16;
 #endif
+#if USE_PTR8
     case init_tag::exit_15_8:
       n8 = (uintptr_t)(void*)task_self_destruct >> 8;
       goto store8;
     case init_tag::exit_7_0:
       n8 = (uintptr_t)(void*)task_self_destruct;
       goto store8;
+#endif
     case init_tag::end:
       __builtin_unreachable();
     }
@@ -219,7 +226,7 @@ store8:
   return task_id;
 }
 
-void task_resume(uint8_t task_id)
+void task_resume(task_t task_id)
 {
   assert(tasks[task_id].state == task_state_suspended);
   if (tasks[task_id].state == task_state_suspended) {
@@ -234,15 +241,13 @@ void task_suspend_self()
   task_yield();
 }
 
-uint8_t task_current()
+task_t task_current()
 {
   return task_index;
 }
 
 void task_run_forever()
 {
-  arch_irq_enable();
-
 	while(1) {
     // Keep waiting for interrupts until a task is ready
     if (!task_yield())

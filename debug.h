@@ -1,6 +1,7 @@
 // debug.h
 
-#include <avr/pgmspace.h>
+#include "arch.h"
+#include <stdint.h>
 
 void debug_leds_init();
 void debug_leds_toggle();
@@ -8,12 +9,8 @@ void debug_leds_toggle_led(uint8_t led_index);
 void debug_leds_toggle_led_divisor(uint8_t led_index, 
   uint32_t increment, uint32_t wrap);
 
-#define noreturn __attribute__((__noreturn__))
-
-noreturn void debug_assert_failed(
+noreturn_decl void debug_assert_failed(
   char const * PROGMEM file, int line, char const * PROGMEM expr);
-
-#define unused __attribute__((__unused__))
 
 #define assert(expr) ((expr) \
   ? true \
@@ -31,5 +28,4 @@ noreturn void debug_assert_failed(
 // Disable optimization of a particular function
 #define unoptimized __attribute__((__optimize__("-O0")))
 
-extern "C" noreturn
-void hang();
+extern "C" noreturn_decl void hang();

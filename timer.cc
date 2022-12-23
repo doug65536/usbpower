@@ -1,5 +1,4 @@
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#include "arch.h"
 #include "timer.h"
 #include "task.h"
 #include "debug.h"
@@ -17,23 +16,14 @@ static uint32_t millisec;
 // millisec can only withstand increasing for 49.7 days
 // To handle this, every day, all timeouts are moved
 // back 1 day worth of milliseconds, and millisec is
-// moved back the same amount
+// moved back the same amount. Each time this occurs
+// days is incremented.
+// To handle timers in the past triggering immediately,
+// instead of 49 days from now, the whole thing is offset
+// by 7 days of milliseconds.
 
 static constexpr const uint32_t day_of_ms = 1000L * 86400;
-
-// Called every 16384 microseconds
-static void timer_tick()
-{
-  millisec += 16;
-  // 48
-  fractsec += 384 / 8;
-
-  // 125
-  if (fractsec >= 1000 / 8) {
-    fractsec -= 1000 / 8;
-    ++millisec;
-  }
-}
+static constexpr const uint32_t week_of_ms = day_of_ms * 7;
 
 struct timer {
   uint32_t millisec;
@@ -63,15 +53,6 @@ static void timer_mark_unused(uint8_t timer)
 static bool timers_full()
 {
   return timers_used == timers_used_full;
-}
-
-void timer_init()
-{
-  OCR1A = 0xFF;
-  TIMSK1 = (1U << OCIE1A);
-  TIFR1 = (1U << TOV1);
-  // div 1024, clear on timer compare match
-  TCCR1B = (1U << CS10) | (1U << CS12) | (1U << WGM12);
 }
 
 void timer_wait_for_ms(uint32_t wait_millisec)
@@ -114,10 +95,12 @@ void timer_wait_until(uint32_t wakeup_millisec)
   }
 }
 
-static void timer_notify()
+void timer_notify()
 {
   // Move the time and timeouts back a day, every day
-  bool fixup = (millisec >= day_of_ms);
+  // after a week has accumulated, to handle timers in
+  // the past
+  bool fixup = (millisec >= week_of_ms);
 
   for (uint8_t i = 0; timers_used && i < max_timers; ++i) {
     if (!(timers_used & (1U << i)))
@@ -142,9 +125,17 @@ static void timer_notify()
   //debug_leds_toggle_led(0);
 }
 
-ISR(TIMER1_COMPA_vect)
+// Called every (TIMER_MS * 1000 + TIMER_US) microseconds
+void timer_tick()
 {
-  //debug_leds_toggle_led_divisor(0, 16384L/8, 1000000L/8);
-  timer_tick();
+  millisec += TIMER_MS;
+  // 48
+  fractsec += TIMER_US / TIMER_GCD;
+
+  // 125
+  if (fractsec >= 1000 / TIMER_GCD) {
+    fractsec -= 1000 / TIMER_GCD;
+    ++millisec;
+  }
   timer_notify();
 }

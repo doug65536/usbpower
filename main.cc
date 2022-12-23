@@ -342,7 +342,7 @@ int main()
 	configure_usbpower_adc();
 	render_init();
 
-	uint8_t calibration_task = task_create(calibrate_stk, 
+	task_t calibration_task = task_create(calibrate_stk, 
 		sizeof(calibrate_stk), calibrate);
 
 	task_run_forever();

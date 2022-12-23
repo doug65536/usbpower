@@ -1,18 +1,7 @@
 #include "debug.h"
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/sleep.h>
+#include "arch.h"
+#include <stdint.h>
 #include <stdlib.h>
-
-#ifndef LED_PORT
-#define LED_DDR  DDRD
-#endif
-#ifndef LED_PORT
-#define LED_PORT  PORTD
-#endif
-#ifndef LED_BIT
-#define LED_BIT 0
-#endif
 
 void debug_leds_init()
 {
@@ -44,13 +33,13 @@ void debug_leds_toggle_led_divisor(uint8_t led_index,
   }
 }
 
-void debug_assert_failed(char const *file unused,
-  int line unused, char const *expr unused)
+noreturn_decl void debug_assert_failed(char const *file unused_decl,
+  int line unused_decl, char const *expr unused_decl)
 {
   abort();
 }
 
-extern "C" noreturn
+extern "C" noreturn_decl
 void hang()
 {
   while (1) {

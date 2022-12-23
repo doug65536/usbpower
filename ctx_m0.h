@@ -21,20 +21,4 @@ struct ctx_m0_bootstrap {
 };
 
 static constexpr size_t const task_init_sz = sizeof(ctx_m0_bootstrap);
-
-static ctx_init_fixup arch_fetch_fixup(ctx_init_fixup const *fixup)
-{
-	ctx_init_fixup result;
-	memcpy(&result, fixup, sizeof(result));
-	return result;
-}
-
-static inline void arch_irq_enable()
-{
-	__asm__ __volatile__ ("CPSIE i");
-}
-
-static inline void arch_irq_disable()
-{
-	__asm__ __volatile__ ("CPSID i");
-}
+static constexpr size_t const task_init_align = alignof(ctx_m0_bootstrap);

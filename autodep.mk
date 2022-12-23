@@ -73,6 +73,8 @@ endef
 
 # Host objects
 
+# $(1): name prefix
+# $(2): toolchain prefix
 define compile_targets=
 $$(foreach file,$$($(1)_SOURCE_NAMES_CC), \
 	$$(eval $$(call compile_extension,$$(file),cc,$(2)_CXX,$(2)_CXXFLAGS,$(2)_OBJDIR,SRCDIR)))

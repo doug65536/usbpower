@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "arch.h"
 
 struct ctx {
 };
@@ -17,12 +18,14 @@ enum struct init_tag : uint8_t {
 	entry_15_0,
 #endif
 
+#if USE_PTR8
 	// hi8
 	entry_15_8,
 
 	// lo8
 	entry_7_0,
-	
+#endif
+
 #if USE_PTR32
 	// 32 bit
 	arg_31_0,
@@ -33,11 +36,13 @@ enum struct init_tag : uint8_t {
 	arg_15_0,
 #endif
 
+#if USE_PTR8
 	// hi8
 	arg_15_8,
 
 	// lo8
 	arg_7_0,
+#endif
 
 #if USE_PTR32
 	// exit32
@@ -49,11 +54,13 @@ enum struct init_tag : uint8_t {
 	exit_15_0,
 #endif
 
+#if USE_PTR8
 	// hi8
 	exit_15_8,
 
 	// lo8
 	exit_7_0,
+#endif
 
 #if USE_PTR32
 	// trampoline32
@@ -65,11 +72,13 @@ enum struct init_tag : uint8_t {
 	tramp_15_0,
 #endif
 
+#if USE_PTR8
 	// hi8
 	tramp_15_8,
 
 	// lo8
 	tramp_7_0,
+#endif
 
 	end
 };

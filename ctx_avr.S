@@ -4,7 +4,6 @@ __SP_L__ = 0x3d
 __SREG__ = 0x3f
 __tmp_reg__ = 0
 __zero_reg__ = 1
-
 	; uint8_t sreg;
 	; uint8_t r1;
 	; uint8_t r2;
@@ -27,6 +26,7 @@ __zero_reg__ = 1
 	; uint8_t r29;
   ; void (*pc)();
 
+.text
 .Lnothing_is_ready:
   ; Return false
   ldi r24,0
@@ -65,15 +65,15 @@ task_yield_noreturn:
   push r0
   in r22,__SP_L__
   in r23,__SP_H__
-#if 1
+#if 0
   ldi r30,pm_lo8(task_cswitch)
   ldi r31,pm_hi8(task_cswitch)
   icall
 #else
   rcall task_cswitch
 #endif
-  out __SP_L__,r24
   out __SP_H__,r25
+  out __SP_L__,r24
   pop r0
   pop r2
   pop r3
@@ -93,7 +93,7 @@ task_yield_noreturn:
   pop r17
   pop r28
   pop r29
-  eor r1,r1
+  clr r1
   out __SREG__,r0
   ; Return true
   ldi r24,1
@@ -111,5 +111,56 @@ task_start_trampoline:
   ; Get parameter from callee saved context to parameter register
   movw r24,r4
   ; Clear zero constant
-  eor r1,r1
+  clr r1
   ijmp
+
+#if 0
+;  push r31
+;  ldi r31,42
+;  rjmp task_on_main_stack
+; Caller loads handler number into r31
+.global task_run_on_main_stack
+task_run_on_main_stack:
+  push r5
+  push r4
+  push r3
+  push r2
+  ; Save the stack pointer and status in callee saved registers
+  in r2,__SP_L__
+  in r3,__SP_H__
+  in r4,__SREG__  
+  ; Fetch main thread stack pointer
+  lds r4,tasks
+  lds r5,tasks+1
+  ; Switch to main task's stack
+  out __SP_H__,r5
+  out __SP_L__,r4
+  ; Push everything the compiler thinks it can clobber onto main stack
+  push r0
+  push r1
+  push r18
+  push r19
+  push r20
+  push r21
+  push r22
+  push r23
+  push r24
+  push r25
+  push r26
+  push r27
+  ; the compiler preserves r28w
+  push r30
+  ; pushed r31 already, a while back
+  movw r30,r24
+  icall
+  out __SP_H__,r3
+  out __SP_L__,r2
+  out __SREG__,r4
+  pop r27
+  pop r2
+  pop r3
+  pop r4
+  pop r5
+  pop r31
+  reti
+#endif

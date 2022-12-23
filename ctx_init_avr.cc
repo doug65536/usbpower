@@ -1,5 +1,6 @@
 #include "ctx_avr.h"
 #include <avr/pgmspace.h>
+#include "timer.h"
 
 ctx_init_fixup const task_init_fixups_arch[] PROGMEM = {
   { init_tag::entry_15_8, offsetof(ctx_avr, r3) },
@@ -13,6 +14,44 @@ ctx_init_fixup const task_init_fixups_arch[] PROGMEM = {
 
   { init_tag::exit_15_8, offsetof(ctx_avr_bootstrap, task_self_destruct_hi) },
   { init_tag::exit_7_0, offsetof(ctx_avr_bootstrap, task_self_destruct_lo) },
-  
+
   { init_tag::end, 0 }
 };
+
+char *arch_init_stack(void *stack, size_t stack_sz)
+{
+  return (char*)(((uintptr_t)stack + stack_sz - 
+    task_init_sz) & -task_init_align);
+}
+
+ctx_init_fixup arch_fetch_fixup(ctx_init_fixup const *fixup)
+{
+	ctx_init_fixup result;
+	memcpy_P(&result, fixup, sizeof(result));
+	return result;
+}
+
+void arch_sleep()
+{
+	sleep_enable();
+	// It is guaranteed to execute the sleep before taking an interrupt
+	sei();
+	sleep_cpu();
+	cli();
+	sleep_disable();
+}
+
+void timer_init()
+{
+  OCR1A = 0xFF;
+  TIMSK1 = (1U << OCIE1A);
+  TIFR1 = (1U << TOV1);
+  // div 1024, clear on timer compare match
+  TCCR1B = (1U << CS10) | (1U << CS12) | (1U << WGM12);
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+  //debug_leds_toggle_led_divisor(0, 16384L/8, 1000000L/8);
+  timer_tick();
+}

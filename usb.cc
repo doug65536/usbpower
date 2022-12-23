@@ -1,3 +1,4 @@
+#include "arch.h"
 #include "usb.h"
 #include "debug.h"
 #include <avr/io.h>
@@ -208,8 +209,7 @@ static void usb_reset()
 #endif
 }
 
-unused
-static void usb_freeze_clk()
+unused_decl static void usb_freeze_clk()
 {
 #ifdef __AVR_ATmega32U4__
   USBCON |= (1U << FRZCLK);
@@ -237,7 +237,7 @@ static void usb_attach()
 #endif
 }
 
-unused
+unused_decl
 static void usb_detach()
 {
 #ifdef __AVR_ATmega32U4__
@@ -295,7 +295,7 @@ static bool usb_ep_bank_writeable()
 #endif
 }
 
-unused 
+unused_decl
 static void usb_send_progmem(void const * PROGMEM p, size_t sz)
 {
 #ifdef __AVR_ATmega32U4__
@@ -306,7 +306,7 @@ static void usb_send_progmem(void const * PROGMEM p, size_t sz)
 #endif
 }
 
-unused 
+unused_decl
 static void usb_send_u8(uint8_t value)
 {
 #ifdef __AVR_ATmega32U4__
@@ -314,7 +314,7 @@ static void usb_send_u8(uint8_t value)
 #endif
 }
 
-unused 
+unused_decl
 static void usb_send_u16(uint16_t value)
 {
 #ifdef __AVR_ATmega32U4__
@@ -323,7 +323,7 @@ static void usb_send_u16(uint16_t value)
 #endif
 }
 
-unused 
+unused_decl
 static void usb_send_u24(uint32_t value)
 {
 #ifdef __AVR_ATmega32U4__
@@ -333,7 +333,7 @@ static void usb_send_u24(uint32_t value)
 #endif
 }
 
-unused 
+unused_decl
 static void usb_send_u32(uint32_t value)
 {
 #ifdef __AVR_ATmega32U4__

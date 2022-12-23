@@ -45,25 +45,3 @@ static_assert(sizeof(ctx_avr_bootstrap) == 24, "unexpected boostrap size");
 
 static constexpr size_t const task_init_sz = sizeof(ctx_avr_bootstrap);
 static constexpr size_t const task_init_align = alignof(ctx_avr_bootstrap);
-
-static inline void arch_sleep()
-{
-	sleep_mode();
-}
-
-static inline void arch_irq_enable()
-{
-	sei();
-}
-
-static inline void arch_irq_disable()
-{
-	cli();
-}
-
-static inline ctx_init_fixup arch_fetch_fixup(ctx_init_fixup const *fixup)
-{
-	ctx_init_fixup result;
-	memcpy_P(&result, fixup, sizeof(result));
-	return result;
-}
