@@ -15,10 +15,5 @@ struct ctx_m0 : public ctx {
   uint32_t pc;
 };
 
-struct ctx_m0_bootstrap {
-  ctx_m0 ctx;
-  uint32_t task_self_destruct;
-};
-
-static constexpr size_t const task_init_sz = sizeof(ctx_m0_bootstrap);
-static constexpr size_t const task_init_align = alignof(ctx_m0_bootstrap);
+static constexpr size_t const task_init_sz = sizeof(ctx_m0);
+static constexpr size_t const task_init_align = alignof(ctx_m0);

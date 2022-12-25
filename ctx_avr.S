@@ -32,7 +32,7 @@ __zero_reg__ = 1
   ldi r24,0
   ret
 
-; bool task_yield()
+; void task_yield(task_t force_task)
 .global task_yield
 .global task_yield_noreturn
 task_yield:
@@ -65,13 +65,7 @@ task_yield_noreturn:
   push r0
   in r22,__SP_L__
   in r23,__SP_H__
-#if 0
-  ldi r30,pm_lo8(task_cswitch)
-  ldi r31,pm_hi8(task_cswitch)
-  icall
-#else
   rcall task_cswitch
-#endif
   out __SP_H__,r25
   out __SP_L__,r24
   pop r0

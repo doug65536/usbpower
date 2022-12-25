@@ -31,13 +31,20 @@ ctx_init_fixup arch_fetch_fixup(ctx_init_fixup const *fixup)
 	return result;
 }
 
+static void arch_enable_irq_then_sleep_then_disable_irq()
+{
+  __asm__ __volatile__ (
+    "sei\n"
+    "sleep\n"
+    "cli\n"
+  );
+}
+
 void arch_sleep()
 {
 	sleep_enable();
 	// It is guaranteed to execute the sleep before taking an interrupt
-	sei();
-	sleep_cpu();
-	cli();
+	arch_enable_irq_then_sleep_then_disable_irq();
 	sleep_disable();
 }
 

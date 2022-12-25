@@ -23,8 +23,9 @@ $(eval $(call gcc_from_arch,,BUILD_))
 $(eval $(call gcc_from_arch,avr-,AVRC_))
 $(eval $(call gcc_from_arch,arm-none-eabi-,M0C_))
 
-M0C_CXXFLAGS += -I$(SRC_DIR)/arch/m0 -mcpu=cortex-m0 -fno-exceptions \
-	-ffreestanding -fbuiltin -nostdlib -g -Os
+M0C_CXXFLAGS += -I$(SRC_DIR)/arch/m0 -mcpu=cortex-m0 -fno-exceptions
+M0C_CXXFLAGS += -ffreestanding -fbuiltin -nostdlib -g -Os
+#M0C_CXXFLAGS += -flto
 
 M0C_LIBGCC = $(shell $(M0C_CXX) $(M0C_CXXFLAGS) -print-libgcc-file-name)
 $(info libgcc is $(M0C_LIBGCC))
@@ -180,12 +181,14 @@ debug-avr: $(QEMU_OUTNAME).elf
 		-ex 'b __vector_11' \
 		-ex 'b __vector_16'
 
+#-iex 'set architecture armv6-m'
+
 debug-m0: $(IO_OUTNAME).elf
 	$(GDB_MULTIARCH) \
 		-iex 'file $^' \
-		-iex 'set architecture armv6-m' \
 		-iex 'target extended-remote :1234' \
-		-ex 'layout src'
+		-iex 'b __unhandled_exception'
+		-iex 'layout src'
 		$(GDBFLAGS)
 
 -include $(DEPFILES)

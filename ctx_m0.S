@@ -12,8 +12,9 @@
 //  uint32_t r11;
 //  uint32_t apsr;
 //  uint32_t pc;
-// size_t task_yield(size_t force_task)
+// void task_yield(task_t force_task)
 .balign 4
+.thumb_func
 .global task_yield
 .global task_yield_noreturn
 task_yield:
@@ -33,7 +34,7 @@ task_yield_noreturn:
   push {r1}
 
   // Save low registers
-  push {r3-r7}
+  push {r4-r7}
 
   // Call scheduler, passing stack pointer in 2nd parameter (1st parameter
   // comes from the task_yield caller)
@@ -57,7 +58,13 @@ task_yield_noreturn:
   msr PSR_nzcvq,r1
   bx r2
 
+.Lnothing_is_ready:
+  mov r0,#0
+  bx lr
+
+.thumb_func
 .global task_start_trampoline
 task_start_trampoline:
   mov r0,r5
+  mov lr,r6
   bx r4

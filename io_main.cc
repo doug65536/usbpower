@@ -17,6 +17,7 @@ void ctor_test()
 
 int main()
 {
+  task_init();
   task_tid = task_create(test_task_stack, sizeof(test_task_stack), 
     task_test, (void*)0x12345678);
   task_run_forever();

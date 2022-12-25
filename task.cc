@@ -4,11 +4,11 @@
 #include "task.h"
 #include "debug.h"
 
-extern "C" void *task_start_trampoline();
-extern "C" bool task_yield(task_t forced_task);
+extern "C" void *task_start_trampoline(void*);
+extern "C" void task_yield(task_t forced_task);
 extern "C"
 noreturn_decl
-bool task_yield_noreturn(task_t forced_task);
+void task_yield_noreturn(task_t forced_task);
 
 struct task {
   ctx *sp = nullptr;
@@ -27,7 +27,7 @@ void task_init()
   tasks[0].state = task_state_running;
 }
 
-noreturn_decl void task_self_destruct(void *return_value)
+noreturn_decl void *task_self_destruct(void *return_value)
 {
   task *self = tasks + task_index;
   self->sp = (ctx*)return_value;
@@ -108,6 +108,7 @@ task_t task_create(void *stack, size_t stack_sz,
       (fixup = arch_fetch_fixup(fixup_ptr)), 
       (fixup.tag != init_tag::end); ++fixup_ptr) {
     char *dest = bootstrap + fixup.value;
+    void *(*fn)(void*);
     union {
 #if USE_PTR32
       uint32_t n32;
@@ -122,50 +123,53 @@ task_t task_create(void *stack, size_t stack_sz,
     switch (fixup.tag) {
 #if USE_PTR32
     case init_tag::entry_31_0:
-      n32 = (uintptr_t)(void*)entry;
-store32:
-      memcpy(dest, &n32, sizeof(n32));
+      fn = entry;
+      static_assert(sizeof(fn) == sizeof(uint32_t));
+storefn:
+      memcpy(dest, &fn, sizeof(fn));
       break;
 #endif
 #if USE_PTR16
     case init_tag::entry_15_0:
-      n16 = (uintptr_t)(void*)entry;
+      n16 = (uintptr_t)entry;
 store16:
       memcpy(dest, &n16, sizeof(n16));
       break;
 #endif
 #if USE_PTR8
     case init_tag::entry_15_8:
-      n8 = (uintptr_t)(void*)entry >> 8;
+      n8 = ((uintptr_t)entry) >> 8;
 store8:
       memcpy(dest, &n8, sizeof(n8));
       break;
     case init_tag::entry_7_0:
-      n8 = (uintptr_t)(void*)entry;
+      n8 = (uintptr_t)entry;
       goto store8;
 #endif
 #if USE_PTR32
     case init_tag::tramp_31_0:
-      n32 = (uintptr_t)(void*)task_start_trampoline;
-      goto store32;
+      fn = task_start_trampoline;
+      goto storefn;
 #endif
 #if USE_PTR16
     case init_tag::tramp_15_0:
-      n16 = (uintptr_t)(void*)task_start_trampoline;
+      n16 = (uintptr_t)task_start_trampoline + PC_OFFSET;
       goto store16;
 #endif
 #if USE_PTR8
     case init_tag::tramp_15_8:
-      n8 = (uintptr_t)(void*)task_start_trampoline >> 8;
+      n8 = ((uintptr_t)task_start_trampoline + PC_OFFSET) >> 8;
       goto store8;
     case init_tag::tramp_7_0:
-      n8 = (uintptr_t)(void*)task_start_trampoline;
+      n8 = (uintptr_t)task_start_trampoline + PC_OFFSET;
       goto store8;
 #endif
 #if USE_PTR32
     case init_tag::arg_31_0:
       n32 = (uintptr_t)arg;
-      goto store32;
+store32:
+      memcpy(dest, &n32, sizeof(n32));
+      break;
 #endif
 #if USE_PTR16
     case init_tag::arg_15_0:
@@ -182,20 +186,20 @@ store8:
 #endif
 #if USE_PTR32
     case init_tag::exit_31_0:
-      n32 = (uintptr_t)(void*)task_self_destruct;
-      goto store32;
+      fn = task_self_destruct;
+      goto storefn;
 #endif
 #if USE_PTR16
     case init_tag::exit_15_0:
-      n16 = (uintptr_t)(void*)task_self_destruct;
+      n16 = (uintptr_t)task_self_destruct;
       goto store16;
 #endif
 #if USE_PTR8
     case init_tag::exit_15_8:
-      n8 = (uintptr_t)(void*)task_self_destruct >> 8;
+      n8 = ((uintptr_t)task_self_destruct) >> 8;
       goto store8;
     case init_tag::exit_7_0:
-      n8 = (uintptr_t)(void*)task_self_destruct;
+      n8 = (uintptr_t)task_self_destruct;
       goto store8;
 #endif
     case init_tag::end:
@@ -250,7 +254,9 @@ void task_run_forever()
 {
 	while(1) {
     // Keep waiting for interrupts until a task is ready
-    if (!task_yield())
+    if (tasks_ready)
+      task_yield();
+    else
       arch_sleep();
 	}
 }

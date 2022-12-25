@@ -31,8 +31,8 @@ noreturn_decl void task_run_forever();
 
 // Assembly
 extern "C" ctx *task_cswitch(task_t forced_task, ctx *outgoing_ctx);
-extern "C" bool task_yield(task_t forced_task = 0);
-extern "C" noreturn_decl bool task_yield_noreturn(task_t forced_task = 0);
+extern "C" void task_yield(task_t forced_task = 0);
+extern "C" noreturn_decl void task_yield_noreturn(task_t forced_task = 0);
 
 extern uint8_t tasks_ready;
 extern uint8_t task_index;
