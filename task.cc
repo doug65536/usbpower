@@ -108,7 +108,9 @@ task_t task_create(void *stack, size_t stack_sz,
       (fixup = arch_fetch_fixup(fixup_ptr)), 
       (fixup.tag != init_tag::end); ++fixup_ptr) {
     char *dest = bootstrap + fixup.value;
+#if USE_PTR32 || USE_PTR16
     void *(*fn)(void*);
+#endif
     union {
 #if USE_PTR32
       uint32_t n32;
@@ -131,9 +133,10 @@ storefn:
 #endif
 #if USE_PTR16
     case init_tag::entry_15_0:
-      n16 = (uintptr_t)entry;
-store16:
-      memcpy(dest, &n16, sizeof(n16));
+      fn = entry;      
+storefn:
+      static_assert(sizeof(fn) == sizeof(uint16_t));
+      memcpy(dest, &fn, sizeof(n16));
       break;
 #endif
 #if USE_PTR8
@@ -153,15 +156,15 @@ store8:
 #endif
 #if USE_PTR16
     case init_tag::tramp_15_0:
-      n16 = (uintptr_t)task_start_trampoline + PC_OFFSET;
-      goto store16;
+      fn = task_start_trampoline;
+      goto storefn;
 #endif
 #if USE_PTR8
     case init_tag::tramp_15_8:
-      n8 = ((uintptr_t)task_start_trampoline + PC_OFFSET) >> 8;
+      n8 = ((uintptr_t)task_start_trampoline) >> 8;
       goto store8;
     case init_tag::tramp_7_0:
-      n8 = (uintptr_t)task_start_trampoline + PC_OFFSET;
+      n8 = (uintptr_t)task_start_trampoline;
       goto store8;
 #endif
 #if USE_PTR32
@@ -191,8 +194,8 @@ store32:
 #endif
 #if USE_PTR16
     case init_tag::exit_15_0:
-      n16 = (uintptr_t)task_self_destruct;
-      goto store16;
+      fn = (uintptr_t)task_self_destruct;
+      goto storefn;
 #endif
 #if USE_PTR8
     case init_tag::exit_15_8:

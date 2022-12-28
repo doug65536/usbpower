@@ -23,12 +23,13 @@ $(eval $(call gcc_from_arch,,BUILD_))
 $(eval $(call gcc_from_arch,avr-,AVRC_))
 $(eval $(call gcc_from_arch,arm-none-eabi-,M0C_))
 
-M0C_CXXFLAGS += -I$(SRC_DIR)/arch/m0 -mcpu=cortex-m0 -fno-exceptions
+M0C_CXXFLAGS += -I$(abspath $(SRC_DIR)) -I$(SRC_DIR)/arch/m0
+M0C_CXXFLAGS += -mcpu=cortex-m0 -fno-exceptions
 M0C_CXXFLAGS += -ffreestanding -fbuiltin -nostdlib -g -Os
 #M0C_CXXFLAGS += -flto
 
 M0C_LIBGCC = $(shell $(M0C_CXX) $(M0C_CXXFLAGS) -print-libgcc-file-name)
-$(info libgcc is $(M0C_LIBGCC))
+#$(info libgcc is $(M0C_LIBGCC))
 
 SRCDIR ?= .
 AVR_MCU = atmega32u4
@@ -53,7 +54,7 @@ LANGUAGEFLAGS = -W -Wall -Wextra -Werror=return-type \
 BUILD_CC = gcc
 BUILD_CXX = g++
 BUILD_CXXFLAGS = $(BUILD_COMPILEFLAGS) $(LANGUAGEFLAGS) -g
-OUTNAMEBASE = usbtoy_blinky
+OUTNAMEBASE = usbpower
 OUTNAME = $(OUTNAMEBASE)-$(AVR_MCU)
 QEMU_OUTNAME = $(OUTNAMEBASE)-$(QEMU_AVR_MCU)
 
@@ -75,16 +76,29 @@ AVRC_COMPILEFLAGS = -mmcu=$(AVR_MCU) -g # -flto
 AVRC_CXXFLAGS = $(AVRC_COMPILEFLAGS) $(LANGUAGEFLAGS)
 AVRC_CXXFLAGS += -DF_CPU=$(AVR_MCU_FREQ)
 AVRC_CXXFLAGS += -Os -flto
-AVRC_CXXFLAGS += -I$(SRC_DIR)/arch/avr
+AVRC_CXXFLAGS += -I$(abspath $(SRC_DIR)) -I$(SRC_DIR)/arch/avr
 #AVRC_CXXFLAGS += -O0
 
 BUILD_CXXFLAGS = $(BUILD_COMPILEFLAGS) $(BUILD_LANGUAGEFLAGS)
 BUILD_CXXFLAGS += -g -Os
 
-AVRC_SRCS = main.cc clk.cc ctx_init_avr.cc ctx_avr.S task.cc timer.cc \
-	usb.cc debug.cc render.cc display-ST7735R-bitbang.S
+AVRC_SRCS = main.cc \
+	task.cc \
+	timer.cc \
+	debug.cc \
+	render.cc \
+	arch/avr/clk.cc \
+	arch/avr/ctx_init.cc \
+	arch/avr/ctx_avr.S \
+	arch/avr/usb.cc \
+	arch/avr/display-ST7735R-bitbang.S
 
-IO_SRCS = io_main.cc task.cc timer.cc ctx_init_m0.cc ctx_m0.S debug.cc \
+IO_SRCS = io_main.cc \
+	task.cc \
+	timer.cc \
+	debug.cc \
+	arch/m0/ctx_init.cc \
+	arch/m0/ctx_m0.S \
 	arch/m0/reset.S
 
 GENFONT_SRCS = genfont.cc

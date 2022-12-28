@@ -21,10 +21,12 @@ SECTIONS {
 
     . = ALIGN(4);
     PROVIDE_HIDDEN(__init_array_st = .);
+    KEEP(*(SORT_BY_INIT_PRIORITY(.init_array)));
     KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*)));
     KEEP(*(SORT_BY_INIT_PRIORITY(.ctors.*)));
     PROVIDE_HIDDEN(__init_array_en = .);
     PROVIDE_HIDDEN(__fini_array_st = .);
+    KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array)));
     KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*)));
     KEEP(*(SORT_BY_INIT_PRIORITY(.dtors.*)));
     PROVIDE_HIDDEN(__fini_array_en = .);

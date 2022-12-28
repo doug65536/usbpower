@@ -2,7 +2,7 @@
 .section .header, ""
 
 .int __end_of_ram
-.int reset + 1
+.int reset
 
 .rept 48
 .int __unhandled_exception
@@ -11,6 +11,8 @@
 .section .header.text, "x"
 
 .text
+.thumb_func
+.global reset
 .balign 4
 reset:
   // Set up exception stack
@@ -43,7 +45,7 @@ reset:
   ldr r0,[r4]
   tst r0,r0
   beq .Linit_done
-  bx r0
+  blx r0
   add r4,#4
   cmp r4,r5
   bne .Linit_next
@@ -51,6 +53,7 @@ reset:
   bl main
   bl abort
 
+.thumb_func
 .global memset
 .balign 4
 memset:
@@ -66,6 +69,20 @@ memset:
   ldr r3,=0x01010101
   uxtb r1,r1
   mul r1,r3
+  mov r3,#16
+.Lmemset_batch:
+  cmn r2,r3
+  bcs .Lmemset_fast
+  str r1,[r0,r2]
+  add r2,#4
+  str r1,[r0,r2]
+  add r2,#4
+  str r1,[r0,r2]
+  add r2,#4
+  str r1,[r0,r2]
+  add r2,#4
+  beq .Lmemset_done
+  b .Lmemset_batch
 .Lmemset_fast:
   str r1,[r0,r2]
   add r2,#4
@@ -80,8 +97,19 @@ memset:
   bx lr
 
 .balign 4
+.thumb_func
 .global memcpy
 memcpy:
+  // Fastpath a bunch of common easy cases
+  cmp r2,#4
+  beq .Lone_word
+  bcs .Lnot_small
+  cmp r2,#1
+  beq .Lone_byte
+  bcc .Ljust_return
+  cmp r2,#2
+  beq .Lhalf_word
+.Lnot_small:
   // Prepare to return the passed destination pointer
   push {r0}
 
@@ -112,12 +140,57 @@ memcpy:
   tst r1,r3
   bne .Lmemcpy_bytes_loop
 
+.Lmemcpy_word_batch_loop:
+  mov r3,#16
+  cmn r2,r3
+  bcc .Lmemcpy_words_loop
+  ldr r3,[r1,r2]
+  str r3,[r0,r2]
+  add r2,#4
+  ldr r3,[r1,r2]
+  str r3,[r0,r2]
+  add r2,#4
+  ldr r3,[r1,r2]
+  str r3,[r0,r2]
+  add r2,#4
+  ldr r3,[r1,r2]
+  str r3,[r0,r2]
+  add r2,#4
+  bne .Lmemcpy_word_batch_loop
+
 .Lmemcpy_words_loop:
   ldr r3,[r1,r2]
   str r3,[r0,r2]
   add r2,#4
   bne .Lmemcpy_words_loop
   b .Lmemcpy_done
+
+.balign 4
+.Lone_byte:
+  ldrb r3,[r1]
+  strb r3,[r0]
+.Ljust_return:
+  bx lr
+
+.Lhalf_word:
+  mov r3,#1
+  tst r0,r3
+  bne .Lnot_small
+  tst r1,r3
+  bne .Lnot_small
+  ldrh r3,[r1]
+  strh r3,[r0]
+  bx lr
+
+.Lone_word:
+  mov r3,#3
+  tst r0,r3
+  bne .Lnot_small
+  tst r1,r3
+  bne .Lnot_small
+  ldr r3,[r1]
+  str r3,[r0]
+  bx lr
 
 .balign 4
 .Lmemcpy_bytes_loop:
@@ -130,6 +203,6 @@ memcpy:
   pop {r0}
   bx lr
 
+.thumb_func
 __unhandled_exception:
-  wfi
-  b __unhandled_exception
+  b abort
