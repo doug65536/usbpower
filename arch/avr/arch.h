@@ -17,11 +17,11 @@
 #define TIMER_US 384
 
 #ifndef LED_PORT
-#define LED_DDR  DDRD
+#define LED_DDR  DDRB
 #endif
 #ifndef LED_PORT
-#define LED_PORT  PORTD
+#define LED_PORT  PORTB
 #endif
 #ifndef LED_BIT
-#define LED_BIT 0
+#define LED_BIT 7
 #endif
