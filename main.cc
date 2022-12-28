@@ -263,9 +263,16 @@ static uint8_t curve_vset[curve_size];
 static void *calibrate(void *)
 {
 #if 1
+uint8_t val = 0;
 	while (true) {
 		debug_leds_toggle_led(0);
 		timer_wait_for_ms(250);
+
+		if ((val += 25) == 250) {
+			val = 0;
+		}
+		set_postregpwm(val);
+		
 		debug_leds_toggle_led(0);
 		timer_wait_for_ms(750);
 	}
