@@ -20,8 +20,8 @@
 #define LED_DDR  DDRB
 #endif
 #ifndef LED_PORT
-#define LED_PORT  PORTB
+#define LED_PORT  OCR0A
 #endif
 #ifndef LED_BIT
-#define LED_BIT 7
+#define LED_BIT 4
 #endif

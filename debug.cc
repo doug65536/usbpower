@@ -12,11 +12,6 @@ void debug_leds_init()
 	// }
 }
 
-void debug_leds_toggle()
-{		
-  LED_PORT ^= 0b11;
-}
-
 void debug_leds_toggle_led(uint8_t led_index)
 {
   LED_PORT ^= 1U << (LED_BIT + led_index);
