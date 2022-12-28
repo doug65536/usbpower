@@ -84,9 +84,9 @@ static void configure_usbpower_pwm()
 	// Initialize Timer0 (LED PWM)
 
 	// Fast-PWM, inverted output to sink current during duty cycle
-	TCCR0A = (1U << COM0A0) | (1U << COM0A1) | 
-		(1U << WGM00) | (1U << WGM01);
-	TCCR0B = (1U << WGM02);
+	// TCCR0A = (1U << COM0A0) | (1U << COM0A1) | 
+	// 	(1U << WGM00) | (1U << WGM01);
+	// TCCR0B = (1U << WGM02);
 	
 	//
 	// Initialize Timer4
