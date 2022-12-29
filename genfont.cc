@@ -78,6 +78,27 @@ void read_png_file(char const* file_name)
   fclose(fp);
 }
 
+std::string utf8_from_codepoint(wchar_t cp)
+{
+  std::string result;
+
+  if (cp > ' ') {
+    std::mbstate_t state = std::mbstate_t();
+    wchar_t const codepoints[] = { cp, 0 };
+    wchar_t const *cpptr = codepoints;
+    std::size_t len = 1 + std::wcsrtombs(nullptr, &cpptr, 0, &state);
+    std::vector<char> mbstr(len);
+    cpptr = codepoints;
+    std::wcsrtombs(mbstr.data(), &cpptr, mbstr.size(), &state);
+    mbstr.pop_back();
+    result = std::string(mbstr.begin(), mbstr.end());
+  } else {
+    result = "<#" + std::to_string(cp) + ">";
+  }
+
+  return result;
+}
+
 int main(int argc, char const **argv)
 {
   if (argc <= 1) {
@@ -157,6 +178,7 @@ int main(int argc, char const **argv)
   std::cout << "static font_symbol const " << 
     short_name << "_font_symbols[] FONTDATA = {\n";
   for (int i = 0; i < symbol_count; ++i) {    
+    std::string glyph = utf8_from_codepoint(infos[i].id);
     std::cout << indent << "{ " <<
       infos[i].id << ", " <<
       //infos[i].x << ", " <<
@@ -165,18 +187,21 @@ int main(int argc, char const **argv)
       infos[i].height << ", " <<
       infos[i].xoffset << ", " <<
       infos[i].yoffset << ", " <<
-      infos[i].xadvance << " },\n";
+      infos[i].xadvance << " },// " << glyph << "\n";
     total_output += 12;
   }
   std::cout << "};\n";
   std::cout << "\n";
   std::cout << "static font_kern const " << 
     short_name << "_font_kerns[] FONTDATA = {\n";
-  for (int i = 0; i < kern_count; ++i) {    
+  for (int i = 0; i < kern_count; ++i) {
+    std::string first_glyph = utf8_from_codepoint(kerns[i].first);
+    std::string second_glyph = utf8_from_codepoint(kerns[i].second);
     std::cout << indent << "{ " <<
       kerns[i].first << ", " <<
       kerns[i].second << ", " <<
-      kerns[i].adjustment << " },\n";
+      kerns[i].adjustment << 
+      " },// [" << first_glyph << second_glyph << "]\n";
     total_output += 6;
   }
   std::cout << "};\n";
@@ -213,16 +238,10 @@ int main(int argc, char const **argv)
   for (size_t i = 0; i < infos.size(); ++i) {
     offsets.push_back(runs.size());
 
-    std::mbstate_t state = std::mbstate_t();
-    wchar_t const codepoints[] = { infos[i].id, 0 };
-    wchar_t const *cpptr = codepoints;
-    std::size_t len = 1 + std::wcsrtombs(nullptr, &cpptr, 0, &state);
-    std::vector<char> mbstr(len);
-    cpptr = codepoints;
-    std::wcsrtombs(mbstr.data(), &cpptr, mbstr.size(), &state);
+    std::string mbglyph = utf8_from_codepoint(infos[i].id);
 
     std::cout << indent << "// Glyph " << 
-      (int)infos[i].id << ' ' << mbstr.data() << 
+      (int)infos[i].id << ' ' << mbglyph << 
       " width=" << infos[i].width <<
       " height=" << infos[i].height <<
       " xadvance=" << infos[i].xadvance <<
@@ -272,8 +291,8 @@ int main(int argc, char const **argv)
   }
   std::cout << "};\n";
 
-  std::cout << "font_info " << 
-    short_name << "_font_info = {\n";
+  std::cout << "font_info const " << 
+    short_name << "_font_info FONTDATA = {\n";
   std::cout << "    " << font_size << ",// font_size\n";
   std::cout << "    " << infos.size() << ",// glyph_count\n";
   std::cout << "    " << short_name <<"_font_symbols,\n";
