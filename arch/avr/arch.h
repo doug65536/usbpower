@@ -23,5 +23,5 @@
 #define LED_PORT  OCR0A
 #endif
 #ifndef LED_BIT
-#define LED_BIT 4
+#define LED_BIT 7
 #endif
