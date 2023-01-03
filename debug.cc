@@ -5,8 +5,8 @@
 
 void debug_leds_init()
 {
-	LED_DDR = ~0b11;
-	LED_PORT = 0b00;
+	// LED_DDR = ~0b11;
+	// LED_PORT = 0b00;
 	// while (1) {
 	// 	_delay_ms(1000);
 	// }

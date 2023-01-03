@@ -11,45 +11,59 @@
 
 // ## Digital inputs
 // PWRIN PE6 - DC input jack NC detect switch
+#define PINI_PWRIN PINE
+#define PIND_PWRIN DDRE
 #define PINP_PWRIN PORTE
 #define PINB_PWRIN PORTE6
 // HWB# PE2 - Boot button
+#define PINI_BOOTBTN PINE
+#define PIND_BOOTBTN DDRE
 #define PINP_BOOTBTN PORTE
 #define PINB_BOOTBTN PORTE2
 
 // ## Digital outputs
 // PREREGEN# PF7
+#define PIND_PREREGENn DDRF
 #define PINP_PREREGENn PORTF
 #define PINB_PREREGENn PORTF7
 // TESTLOAD PF5
+#define PIND_TESTLOAD DDRF
 #define PINP_TESTLOAD PORTF
 #define PINB_TESTLOAD PORTF5
 // LED PB7 - Diagnostic LED - also OC0A PWM
+#define PIND_DIAGLED DDRB
 #define PINP_DIAGLED PORTB
 #define PINB_DIAGLED PORTB7
 
 // ## Digital I/O SPI header interface
 // SPISCLK PB1
+#define PIND_SPISCLK DDRB
 #define PINP_SPISCLK PORTB
 #define PINB_SPISCLK PORTB1
 // SPIMOSI PB2
+#define PIND_SPIMOSI DDRB
 #define PINP_SPIMOSI PORTB
 #define PINB_SPIMOSI PORTB2
 // SPIMISO PB3
+#define PIND_SPIMISO DDRB
 #define PINP_SPIMISO PORTB
 #define PINB_SPIMISO PORTB3
 
 // ## PWM outputs
 // VSETPWM PC7/OC4A 9-bit 64MHz 125kHz PWM
+#define PIND_VSETPWM DDRC
 #define PINP_VSETPWM PORTC
 #define PINB_VSETPWM PORTC7
 // ISETPWM PC6/OC3A 9-bit 16MHz 31.25kHz PWM
+#define PIND_ISETPWM DDRC
 #define PINP_ISETPWM PORTC
 #define PINB_ISETPWM PORTC6
 // IOFSPWM PB6/OC4B 9-bit 64MHz 125kHz PWM
+#define PIND_IOFSPWM DDRB
 #define PINP_IOFSPWM PORTB
 #define PINB_IOFSPWM PORTB6
-// POSTREGPWM PD7/OCR4D 9-bit 64MHz 125kHz PWM
+// POSTREGPWM PD7/OC4D 9-bit 64MHz 125kHz PWM
+#define PIND_POSTREGPWM DDRD
 #define PINP_POSTREGPWM PORTD
 #define PINB_PORTREGPWM PORTD7
 
@@ -79,27 +93,41 @@ enum input_index : uint8_t {
 static void configure_usbpower_pwm()
 {
 #ifdef __AVR_ATmega32U4__
-
 	//
-	// Initialize Timer0 (LED PWM)
+	// Initialize Timer0 (LED PWM) (8 bit timer)
 
 	// Fast-PWM, inverted output to sink current during duty cycle
 	TCCR0A = (1U << COM0A0) | (1U << COM0A1) | 
 		(1U << WGM00) | (1U << WGM01);
 	TCCR0B &= ~(1U << WGM02);
 	TCCR0B |= (1U << CS00);
+
+	// Timer1 is the realtime timer.cc
+
+	// Initialize OC3A iset (16 bit timer)
+	TCCR3A = (1U << COM3A0) | (1U << COM3A1) |
+		(1U << WGM30) | (1U << WGM31);
+	TCCR3B &= ~(1U << WGM32);
+	TCCR3B |= (1U << CS30);
 	
 	//
 	// Initialize Timer4
 
+	//  oc4a vsetpwm
+	//  oc4b iofspwm
+	// <oc4c> configurable TOP
+	//  oc4d postregpwm
+
 	// Fast PWM, Clear on compare match, set on 0 on A and B and D
-	TCCR4A = (1U << COM4A1) | (1U << COM4B1) | (1U << PWM4A) | (1U << PWM4B);
+	TCCR4A = (1U << COM4A1) | (1U << COM4B1) |
+		(1U << PWM4A) | (1U << PWM4B);
 	TCCR4C = (1U << COM4D1) | (1U << PWM4D);
 
-	TCCR4B = (1U << PWM4X);
-
+	// Set fast PWM, divide by 1
+	TCCR4B = (1U << PWM4X) | (1U << CS40) | (1U << PSR4);
 	// 64MHz timer (96MHz / 1.5 = 64MHz)
-	PLLFRQ |= (1U << PLLTM1);
+	// TM1:0=10 = divide by 1.5, PDIV3:0=0b1010 = 96MHz
+	PLLFRQ |= (1U << PLLTM1) | (1U << PDIV3) | (1U << PDIV1) | (1U << PLLUSB);
 #endif
 }
 
@@ -339,6 +367,37 @@ uint8_t val = 0;
 #endif
 }
 
+static void configure_usbpower_gpio()
+{
+	// Configure output
+
+	// Disable prereg
+	PINP_PREREGENn |= (1U << PINB_PREREGENn);
+	PIND_PREREGENn |= (1U << PINB_PREREGENn);
+
+	// Turn off test load
+	PINP_TESTLOAD &= ~(1U << PINB_TESTLOAD);
+	PIND_TESTLOAD |= (1U << PINB_TESTLOAD);
+
+	// Drive diagnostic LED
+	PIND_DIAGLED |= (1U << PINB_DIAGLED);
+
+	//
+	// Drive SPI
+
+	// sclk
+	PINP_SPISCLK &= ~(1U << PINB_SPISCLK);
+	PIND_SPISCLK |= (1U << PINB_SPISCLK);
+	
+	// mosi
+	PINP_SPIMOSI &= ~(1U << PINB_SPIMOSI);
+	PIND_SPIMOSI |= (1U << PINB_SPIMOSI);
+	
+	// miso
+	PINP_SPIMISO |= (1U << PINB_SPIMISO);
+	PIND_SPIMISO &= ~(1U << PINB_SPIMISO);
+}
+
 int main()
 {
 	// Max throttle, immediately
@@ -347,6 +406,8 @@ int main()
 	usb_init();
 	task_init();
 	timer_init();
+	configure_usbpower_gpio();
+	configure_usbpower_pwm();
 	configure_usbpower_adc();
 	render_init();
 
